@@ -4,75 +4,50 @@
 
 using namespace std;
 
-Behavior::Behavior() {
-
-    // initialize states
-    State ready;
-    ready.setId(State::READY);
-
-    State keep_lane;
-    keep_lane.setId(State::LANE_KEEP);
-
-    State lane_change_left;
-    lane_change_left.setId(State::LANE_CHANGE_LEFT);
-
-    State lane_change_right;
-    lane_change_right.setId(State::LANE_CHANGE_RIGHT);
-
-    State prepare_lane_change_left;
-    prepare_lane_change_left.setId(State::PREPARE_LANE_CHANGE_LEFT);
-
-    State prepare_lane_change_right;
-    prepare_lane_change_right.setId(State::PREPARE_LANE_CHANGE_RIGHT);
-
+Behavior::Behavior() : 
+    ready_(State::READY),
+    keep_lane_(State::LANE_KEEP),
+    lane_change_left_(State::LANE_CHANGE_LEFT),
+    lane_change_right_(State::LANE_CHANGE_RIGHT),
+    prepare_lane_change_left_(State::PREPARE_LANE_CHANGE_LEFT),
+    prepare_lane_change_right_(State::PREPARE_LANE_CHANGE_RIGHT)
+{
     // ready transitions
-    ready.addTransition(&ready);
-    ready.addTransition(&keep_lane);
+    ready_.addTransition(&ready_);
+    ready_.addTransition(&keep_lane_);
 
     // keep lane transitions
-    keep_lane.addTransition(&keep_lane);
-    keep_lane.addTransition(&prepare_lane_change_left);
-    keep_lane.addTransition(&prepare_lane_change_right);
+    keep_lane_.addTransition(&keep_lane_);
+    keep_lane_.addTransition(&prepare_lane_change_left_);
+    keep_lane_.addTransition(&prepare_lane_change_right_);
 
     // prepare lane change left transitions
-    prepare_lane_change_left.addTransition(&keep_lane);
-    prepare_lane_change_left.addTransition(&lane_change_left);
-    prepare_lane_change_left.addTransition(&prepare_lane_change_right);
+    prepare_lane_change_left_.addTransition(&keep_lane_);
+    prepare_lane_change_left_.addTransition(&lane_change_left_);
+    prepare_lane_change_left_.addTransition(&prepare_lane_change_right_);
 
     // prepare lane change right transitions
-    prepare_lane_change_right.addTransition(&keep_lane);
-    prepare_lane_change_right.addTransition(&lane_change_right);
-    prepare_lane_change_right.addTransition(&prepare_lane_change_right);
+    prepare_lane_change_right_.addTransition(&keep_lane_);
+    prepare_lane_change_right_.addTransition(&lane_change_right_);
+    prepare_lane_change_right_.addTransition(&prepare_lane_change_right_);
 
     // change lane left transitions
-    lane_change_left.addTransition(&lane_change_left);
-    lane_change_left.addTransition(&keep_lane);
+    lane_change_left_.addTransition(&lane_change_left_);
+    lane_change_left_.addTransition(&keep_lane_);
 
     // change lane right transitions
-    lane_change_right.addTransition(&lane_change_right);
-    lane_change_right.addTransition(&keep_lane);
+    lane_change_right_.addTransition(&lane_change_right_);
+    lane_change_right_.addTransition(&keep_lane_);
 
     // // Set initial state
-    state_ = &ready;
-
-    cout << "constructor." <<  endl;
-    transition();
+    this->state_ = &ready_;
 }
 
-Behavior::Behavior(const Behavior &obj) {
-   cout << "Copy constructor allocating ptr." << endl;
-   // ptr = new int;
-   // *ptr = *obj.ptr; // copy the value
-}
-
-Behavior::~Behavior() {
-    cout << "behavior gone" << endl;
-}
+Behavior::~Behavior() {}
 
 void Behavior::transition() {
-
     vector<State*> states = state_->getTransitions();
-    cout << "Current ID: " << state_->getId() << " Size: " << states.size() << endl ;
+    cout << "Current ID: " << state_->getId() << endl;
     for (int i = 0; i < states.size(); i++) {
         cout << "ID: " << states[i]->getId() << endl;
     }

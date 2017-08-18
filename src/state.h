@@ -6,9 +6,6 @@
 class State {
  public:
 
-  State();
-  virtual ~State();
-
   enum StateId {
     READY,
     LANE_KEEP,
@@ -17,6 +14,9 @@ class State {
     PREPARE_LANE_CHANGE_LEFT,
     PREPARE_LANE_CHANGE_RIGHT
   } id_;
+
+  State(StateId id);
+  virtual ~State();
 
   void addTransition(State* state);
   void setId(StateId id);

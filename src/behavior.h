@@ -13,6 +13,12 @@ class Behavior {
 
  private:
   State* state_;
+  State ready_;
+  State keep_lane_;
+  State lane_change_left_;
+  State lane_change_right_;
+  State prepare_lane_change_left_;
+  State prepare_lane_change_right_;
 
 };
 

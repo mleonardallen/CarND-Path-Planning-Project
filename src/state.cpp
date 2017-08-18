@@ -1,14 +1,13 @@
 #include "state.h"
+#include <iostream>
 
 using namespace std;
 
-State::State() {
+State::State(State::StateId id) {
+  id_ = id;
 }
 State::~State() {}
 
-void State::setId(State::StateId id) {
-  id_ = id;
-}
 
 State::StateId State::getId() {
   return id_;
