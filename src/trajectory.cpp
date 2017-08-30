@@ -133,6 +133,7 @@ vector<vector<double>> Trajectory::getTrajectory(
     double target_vehicle_s = target_vehicle[5];
     double closest_vehicle_s = closest_vehicle[5];
 
+    // make sure not to run int the car in front of you even if trying to follow another car
     max_vel = closest_vehicle_s < target_vehicle_s
       ? getLeadingVelocity(car_s, closest_vehicle)
       : getLeadingVelocity(car_s, target_vehicle);

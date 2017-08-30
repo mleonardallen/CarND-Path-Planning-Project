@@ -106,7 +106,7 @@ double TooCloseCost::getCost(
   vector<double> maps_y
 ) {
 
-  double buffer_s = 6.0;
+  double buffer_s = 1.0;
   double buffer_d = 0.5;
 
   double amount = getBufferViolations(
@@ -157,5 +157,21 @@ double SlowSpeedCost::getCost(
   double percent = (50 - average) / 50;
   double amount = (percent * percent) * 10;
 
+  return amount * weight_;
+}
+
+ChangeLaneCost::ChangeLaneCost() {
+  weight_ = 1.;
+}
+double ChangeLaneCost::getCost(
+  shared_ptr<State> state,
+  double car_x,
+  double car_y,
+  std::vector<std::vector<double>> waypoints,
+  std::vector<std::vector<double>> sensor_fusion,
+  vector<double> maps_x,
+  vector<double> maps_y
+) {
+  double amount = 0;
   return amount * weight_;
 }

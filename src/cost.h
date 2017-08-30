@@ -72,10 +72,24 @@ class TooCloseCost : public Cost {
   );
 };
 
-
 class CollideCost : public Cost {
  public:
   CollideCost();
+
+  double getCost(
+    std::shared_ptr<State> state,
+    double car_x,
+    double car_y,
+    std::vector<std::vector<double>> trajectory,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<double> maps_x,
+    std::vector<double> maps_y
+  );
+};
+
+class ChangeLaneCost : public Cost {
+ public:
+  ChangeLaneCost();
 
   double getCost(
     std::shared_ptr<State> state,

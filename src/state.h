@@ -24,7 +24,7 @@ class State {
   std::string getName();
   void print();
 
-  virtual bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s) = 0;
+  virtual bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) = 0;
   virtual std::vector<State::StateId> getTransitions() = 0;
 
   std::string name_;
@@ -36,35 +36,35 @@ class State {
 class LaneKeepState : public State {
  public:
   LaneKeepState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
   std::vector<StateId> getTransitions();
 };
 
 class LaneChangeLeftState : public State {
  public:
   LaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
   std::vector<StateId> getTransitions();
 };
 
 class LaneChangeRightState : public State {
  public:
   LaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
   std::vector<StateId> getTransitions();
 };
 
 class PrepareLaneChangeLeftState : public State {
  public:
   PrepareLaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
   std::vector<StateId> getTransitions();
 };
 
 class PrepareLaneChangeRightState : public State {
  public:
   PrepareLaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
   std::vector<StateId> getTransitions();
 };
 

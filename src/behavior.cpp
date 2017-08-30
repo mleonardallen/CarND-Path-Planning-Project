@@ -86,6 +86,8 @@ vector<PossibleTrajectory> BehaviorPlanner::getPossibleTrajectories(
   vector<PossibleTrajectory> trajectories;
   vector<State::StateId> transitions = state->getTransitions();
   int car_lane = trajectory.getLaneNumber(car_d);
+  int closest_vehicle_id = trajectory.getClosestVehicleId(car_d, car_s, sensor_fusion);
+  double closest_vehicle_s = sensor_fusion[closest_vehicle_s][5];
 
   // get target vehicle ids
   // also append -1 for no target vehicle
@@ -102,6 +104,8 @@ vector<PossibleTrajectory> BehaviorPlanner::getPossibleTrajectories(
       int target_vehicle_id = target_vehicle_ids[v_idx];
 
       double diff_s = 0;
+      double diff_closest_s = trajectory.distance(car_s, closest_vehicle_s);
+
       int target_vehicle_lane = car_lane;
 
       if (target_vehicle_id != -1) { 
@@ -124,7 +128,7 @@ vector<PossibleTrajectory> BehaviorPlanner::getPossibleTrajectories(
         );
 
         // filter out invalid transitions
-        if (!transition->isValid(state, car_lane, diff_s)) {
+        if (!transition->isValid(state, car_lane, diff_s, diff_closest_s)) {
           continue;
         };
 

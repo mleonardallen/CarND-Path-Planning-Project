@@ -65,7 +65,7 @@ LaneKeepState::LaneKeepState(int target_vehicle_id, int target_vehicle_lane, int
   target_lane_ = target_lane;
 }
 
-bool LaneKeepState::isValid(shared_ptr<State> state, int car_lane, double diff_s) {
+bool LaneKeepState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   return car_lane == target_vehicle_lane_
     && car_lane == target_lane_
     && target_vehicle_id_ == -1;
@@ -89,16 +89,19 @@ PrepareLaneChangeLeftState::PrepareLaneChangeLeftState(int target_vehicle_id, in
   target_lane_ = target_lane;
 }
 
-bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s) {
+bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   // if no leading vehicle, then we assume that we are ready to change lanes,
   // so we should not continue to prepare to change lanes
 
   if (
     state->getId() == State::StateId::PREPARE_LANE_CHANGE_LEFT
     && target_vehicle_id_ == -1
-  ) {
-    return false;
-  }
+  ) return false;
+
+  if (
+    target_vehicle_id_ != -1
+    && diff_closest_s < diff_s
+  ) return false;
 
   return (
     target_vehicle_lane_ >= 0
@@ -131,15 +134,18 @@ PrepareLaneChangeRightState::PrepareLaneChangeRightState(int target_vehicle_id, 
   target_lane_ = target_lane;
 }
 
-bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s) {
+bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   // if no leading vehicle, then we assume that we are ready to change lanes,
   // so we should not continue to prepare to change lanes
   if (
     state->getId() == State::StateId::PREPARE_LANE_CHANGE_RIGHT
     && target_vehicle_id_ == -1
-  ) {
-    return false;
-  }
+  ) return false;
+
+  if (
+    target_vehicle_id_ != -1
+    && diff_closest_s < diff_s
+  ) return false;
 
   return (
     target_vehicle_lane_ >= 0
@@ -170,7 +176,7 @@ LaneChangeLeftState::LaneChangeLeftState(int target_vehicle_id, int target_vehic
   target_lane_ = target_lane;
 }
 
-bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s) {
+bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   return (
     target_vehicle_lane_ > 0
     && target_vehicle_lane_ < 2
@@ -199,7 +205,7 @@ LaneChangeRightState::LaneChangeRightState(int target_vehicle_id, int target_veh
   target_lane_ = target_lane;
 }
 
-bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s) {
+bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   return (
     target_vehicle_lane_ > 0
     && target_vehicle_lane_ < 2
