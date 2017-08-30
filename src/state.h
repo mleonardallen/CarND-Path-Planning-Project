@@ -2,6 +2,8 @@
 #define STATE_H
 
 #include <vector>
+#include <memory>
+#include <string>
 
 class State {
  public:
@@ -15,17 +17,60 @@ class State {
     PREPARE_LANE_CHANGE_RIGHT
   } id_;
 
-  State(StateId id);
+  State();
   virtual ~State();
 
-  void addTransition(State* state);
-  void setId(StateId id);
   StateId getId();
-  std::vector<State*> getTransitions();
+  std::string getName();
+  void print();
 
- private:
-  std::vector<State*> transition_states_;
+  virtual bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s) = 0;
+  virtual std::vector<State::StateId> getTransitions() = 0;
+
+  std::string name_;
+  int target_vehicle_id_;
+  int target_vehicle_lane_;
+  int target_lane_;
 };
 
+class LaneKeepState : public State {
+ public:
+  LaneKeepState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  std::vector<StateId> getTransitions();
+};
+
+class LaneChangeLeftState : public State {
+ public:
+  LaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  std::vector<StateId> getTransitions();
+};
+
+class LaneChangeRightState : public State {
+ public:
+  LaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  std::vector<StateId> getTransitions();
+};
+
+class PrepareLaneChangeLeftState : public State {
+ public:
+  PrepareLaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  std::vector<StateId> getTransitions();
+};
+
+class PrepareLaneChangeRightState : public State {
+ public:
+  PrepareLaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s);
+  std::vector<StateId> getTransitions();
+};
+
+class StateFactory {
+ public:
+  static std::shared_ptr<State> create(State::StateId id, int target_vehicle_id, int target_vehicle_lane, int target_lane);
+};
 
 #endif /* STATE_H */

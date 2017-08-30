@@ -10,6 +10,7 @@
 #include "json.hpp"
 #include "trajectory.h"
 #include "behavior.h"
+#include "state.h"
 
 using namespace std;
 
@@ -41,8 +42,15 @@ int main() {
   vector<double> map_waypoints_dx;
   vector<double> map_waypoints_dy;
 
+  vector<thread> threads;
   Trajectory trajectory;
-  Behavior behavior;
+  BehaviorPlanner planner;
+  shared_ptr<State> state = StateFactory::create(
+    State::StateId::LANE_KEEP,
+    -1, // target vehicle
+    1, // target lane
+    1 // target lane
+  );
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -71,9 +79,10 @@ int main() {
     map_waypoints_dy.push_back(d_y);
   }
 
+  bool thread_is_done = false;
   h.onMessage([
     &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy,
-    &trajectory, &behavior
+    &trajectory, &planner, &threads, &state, &thread_is_done
   ](
     uWS::WebSocket<uWS::SERVER> ws,
     char *data, size_t length,
@@ -111,15 +120,51 @@ int main() {
           double end_path_d = j[1]["end_path_d"];
 
           // Sensor Fusion Data, a list of all other cars on the same side of the road.
-          auto sensor_fusion = j[1]["sensor_fusion"];
+          vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
 
           json msgJson;
 
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-          behavior.transition();
+
+          // if planner is not currently working, start a new thread
+          if (!threads.size())
+          {
+            vector<vector<double>> planner_waypoints;
+            threads.emplace_back(
+              planner.transition,
+              car_x, car_y, car_s, car_d, car_yaw,
+              previous_path_x, previous_path_y,
+              map_waypoints_x, map_waypoints_y, map_waypoints_s,
+              sensor_fusion,
+              std::ref(state),
+              std::ref(thread_is_done)
+            );
+          } 
+          // if planner is finished, leverage instructions
+          else if (thread_is_done && threads[0].joinable())
+          {
+            // received new instructions from the planner
+            threads[0].join();
+            threads.pop_back();
+            thread_is_done = false;
+          } else {
+            int target_lane = trajectory.getLaneNumber(car_d);
+            state = StateFactory::create(
+              State::StateId::LANE_KEEP,
+              -1, // target vehicle
+              target_lane,
+              target_lane
+            );
+          }
+
+          cout << " main --- ";
+          state->print();
+
           vector<vector<double>> waypoints = trajectory.getTrajectory(
+            state,
+            sensor_fusion,
             car_x, car_y, car_s, car_d, car_yaw,
-            previous_path_x, previous_path_y, 
+            previous_path_x, previous_path_y,
             map_waypoints_x, map_waypoints_y, map_waypoints_s
           );
 
