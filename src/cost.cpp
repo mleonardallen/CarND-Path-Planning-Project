@@ -140,24 +140,8 @@ double SlowSpeedCost::getCost(
 ) {
   Trajectory trajectory;
 
-  double x1 = car_x;
-  double y1 = car_y;
-
-  vector<double> speeds;
-  for (int idx = 0; idx < waypoints[0].size(); idx++) {
-
-    double x2 = waypoints[0][idx];
-    double y2 = waypoints[1][idx];
-    double distance = trajectory.distance(x1, y1, x2, y2);
-    double speed = trajectory.velocity(distance);
-    speeds.push_back(speed);
-
-    x1 = x2;
-    y1 = y2;
-  }
-
+  double average = trajectory.getAverageVelocity(waypoints);
   double max_vel = trajectory.getMaxVelocity();
-  double average = accumulate(speeds.begin(), speeds.end(), 0.0) / speeds.size();
   double percent = (max_vel - average) / max_vel;
   double amount = sqrt(percent * percent);
 

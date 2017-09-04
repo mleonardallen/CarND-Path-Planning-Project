@@ -12,7 +12,8 @@ PossibleTrajectory::PossibleTrajectory(
     vector<vector<double>> trajectory,
     double cost,
     int target_leading_vehicle_id,
-    int target_lane_id
+    int target_lane_id,
+    shared_ptr<PossibleTrajectory> prev
 ) {
   state_ = state;
   trajectory_ = trajectory;
@@ -20,6 +21,13 @@ PossibleTrajectory::PossibleTrajectory(
   total_cost_ = cost;
   target_leading_vehicle_id_ = target_leading_vehicle_id;
   target_lane_id_ = target_lane_id;
+
+  // set previous possible trajectory
+  prev_ = prev;
+  if (prev) {
+    total_cost_ += prev->total_cost_;
+  }
+
 }
 PossibleTrajectory::~PossibleTrajectory() {}
 
@@ -48,6 +56,7 @@ void BehaviorPlanner::transition(
     previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s,
     sensor_fusion,
     state,
+    nullptr,
     3 // depth
   );
 
@@ -68,7 +77,7 @@ void BehaviorPlanner::transition(
 }
 
 vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesRecursive(
-  double car_x,double car_y, double car_s, double car_d, double car_yaw,
+  double car_x, double car_y, double car_s, double car_d, double car_yaw,
   vector<double> previous_path_x,
   vector<double> previous_path_y,
   vector<double> map_waypoints_x,
@@ -76,6 +85,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
   shared_ptr<State> state,
+  shared_ptr<PossibleTrajectory> prev,
   int depth
 ) {
 
@@ -83,7 +93,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
     car_x, car_y, car_s, car_d, car_yaw,
     previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s,
     sensor_fusion,
-    state
+    state,
+    prev
   );
 
   if (depth > 1) {
@@ -100,7 +111,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
       int N = possible_trajectories[i]->trajectory_[0].size();
       vector<vector<double>> future_sensor_fusion = getFutureSensorFusion(N, map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion);
 
-      vector<shared_ptr<PossibleTrajectory>> nested = getPossibleTrajectoriesRecursive(
+      getPossibleTrajectoriesRecursive(
         future_x,
         future_y,
         future_sd[0],
@@ -111,24 +122,15 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
         map_waypoints_x, map_waypoints_y, map_waypoints_s,
         future_sensor_fusion,
         possible_trajectories[i]->state_,
+        possible_trajectories[i], // this pointer is modified to link to lowest cost next trajectory
         depth
       );
-
-      // add previous cost to all possible trajectories
-      for (int nested_idx = 0; nested_idx < nested.size(); nested_idx++) {
-
-        nested[nested_idx]->total_cost_ += possible_trajectories[i]->total_cost_;
-        nested[nested_idx]->prev_ = possible_trajectories[i];
-
-        possible_trajectories[i]->nested_ = nested;
-      }
     }
   } else {
 
     for (int i = 0; i < possible_trajectories.size(); i++) {
       shared_ptr<PossibleTrajectory> current = possible_trajectories[0]; 
       while (current->prev_) {
-
         if (!current->prev_->lowest_) {
           current->prev_->lowest_ = current;
           // propogate total cost back to initial state
@@ -155,7 +157,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
   vector<double> map_waypoints_y,
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
-  shared_ptr<State> fromState
+  shared_ptr<State> fromState,
+  shared_ptr<PossibleTrajectory> prev_possible_trajectory
 ) {
 
   Trajectory trajectory;
@@ -246,7 +249,14 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
 
         // store trajectory
         trajectories.push_back(shared_ptr<PossibleTrajectory>(
-          new PossibleTrajectory(toState, possible_trajectory, cost, target_vehicle_id, target_lanes[l_idx])
+          new PossibleTrajectory(
+            toState,
+            possible_trajectory,
+            cost,
+            target_vehicle_id,
+            target_lanes[l_idx],
+            prev_possible_trajectory
+          )
         ));
       }
     }

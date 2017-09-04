@@ -47,6 +47,8 @@ class Trajectory {
 
   int getClosestVehicleId(double car_d, double car_s, std::vector<std::vector<double>> sensor_fusion);
 
+  double getAverageVelocity(std::vector<std::vector<double>> waypoints);
+
   double pi();
 
   double deg2rad(double x);

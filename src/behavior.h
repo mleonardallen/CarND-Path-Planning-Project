@@ -12,7 +12,8 @@ class PossibleTrajectory {
     std::vector<std::vector<double>> trajectory,
     double cost,
     int target_lane_id,
-    int target_leading_vehicle_id
+    int target_leading_vehicle_id,
+    std::shared_ptr<PossibleTrajectory> prev
   );
   virtual ~PossibleTrajectory();
 
@@ -21,13 +22,17 @@ class PossibleTrajectory {
 
   double cost_;
   double total_cost_;
-  double future_cost_;
 
   int target_lane_id_;
   int target_leading_vehicle_id_;
 
+  // future trajectories branching from self
   std::vector<std::shared_ptr<PossibleTrajectory>> nested_;
+
+  // previous trajectory
   std::shared_ptr<PossibleTrajectory> prev_;
+
+  // lowest total cost future trajectory
   std::shared_ptr<PossibleTrajectory> lowest_;
 };
 
@@ -66,6 +71,7 @@ class BehaviorPlanner {
     std::vector<double> map_waypoints_s,
     std::vector<std::vector<double>> sensor_fusion,
     std::shared_ptr<State> state,
+    std::shared_ptr<PossibleTrajectory> prev,
     int depth
   );
 
@@ -81,7 +87,8 @@ class BehaviorPlanner {
     std::vector<double> map_waypoints_y,
     std::vector<double> map_waypoints_s,
     std::vector<std::vector<double>> sensor_fusion,
-    std::shared_ptr<State> state
+    std::shared_ptr<State> state,
+    std::shared_ptr<PossibleTrajectory> prev
   );
 
   static std::vector<std::vector<double>> getFutureSensorFusion(

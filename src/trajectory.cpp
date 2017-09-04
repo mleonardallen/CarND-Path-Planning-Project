@@ -1,5 +1,6 @@
 #include <math.h>
 #include <iostream>
+#include <numeric>
 #include "trajectory.h"
 #include "behavior.h"
 #include "spline.h"
@@ -214,6 +215,27 @@ int Trajectory::getClosestVehicleId(
   }
 
   return closest_vehicle_id;
+}
+
+double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
+
+  double x1 = waypoints[0][0];
+  double y1 = waypoints[1][0];
+
+  vector<double> speeds;
+  for (int idx = 1; idx < waypoints[0].size(); idx++) {
+    double x2 = waypoints[0][idx];
+    double y2 = waypoints[1][idx];
+    double dist = distance(x1, y1, x2, y2);
+    double speed = velocity(dist);
+    speeds.push_back(speed);
+
+    x1 = x2;
+    y1 = y2;
+  }
+
+  double average = accumulate(speeds.begin(), speeds.end(), 0.0) / speeds.size();
+  return average;
 }
 
 // For converting back and forth between radians and degrees.
