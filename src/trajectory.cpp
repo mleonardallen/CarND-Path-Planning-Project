@@ -13,6 +13,58 @@ Trajectory::~Trajectory() {}
 
 double Trajectory::ref_vel_ = 0;
 
+vector<vector<double>> Trajectory::getTrajectory(
+  shared_ptr<State> transistion,
+  vector<vector<double>> sensor_fusion,
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<double> previous_path_x,
+  vector<double> previous_path_y,
+  vector<double> map_waypoints_x,
+  vector<double> map_waypoints_y,
+  vector<double> map_waypoints_s
+) {
+
+  double target_vehicle_id = transistion->target_vehicle_id_;
+  if (target_vehicle_id == -1) {
+    double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
+    target_vehicle_id = closest_vehicle_id;
+  }
+  double max_vel = max_vel_;
+  if (target_vehicle_id != -1) {
+    vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
+    double target_vehicle_s = target_vehicle[5];
+    max_vel = getLeadingVelocity(car_s, target_vehicle);
+  }
+
+  // Build trajector from previous points and future points
+  vector<double> next_x_vals;
+  vector<double> next_y_vals;
+
+  int prev_size = previous_path_x.size();
+
+  // retain previous trajectory points
+  next_x_vals.insert(next_x_vals.end(), previous_path_x.begin(), previous_path_x.end());
+  next_y_vals.insert(next_y_vals.end(), previous_path_y.begin(), previous_path_y.end());
+
+  // generate new trajectory points
+  vector<vector<double>> future = getFutureTrajectory(
+    transistion->target_lane_,
+    sensor_fusion,
+    car_x, car_y, car_s, car_d, car_yaw,
+    previous_path_x, previous_path_y,
+    map_waypoints_x, map_waypoints_y, map_waypoints_s,
+    max_vel
+  );
+  next_x_vals.insert(next_x_vals.end(), future[0].begin(), future[0].end());
+  next_y_vals.insert(next_y_vals.end(), future[1].begin(), future[1].end());
+
+  return {next_x_vals, next_y_vals};
+}
+
 vector<vector<double>> Trajectory::getFutureTrajectory(
   int target_lane,
   vector<vector<double>> sensor_fusion,
@@ -25,7 +77,8 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   vector<double> previous_path_y,
   vector<double> map_waypoints_x,
   vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s
+  vector<double> map_waypoints_s,
+  double max_vel
 ) {
   std::vector<double> ptsx;
   std::vector<double> ptsy;
@@ -60,7 +113,11 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   // get future points for spline
   vector<int> distances = {30, 60, 90};
   for (int i = 0; i < distances.size(); i++) {
-    vector<double> xy = getXY(car_s + distances[i], (lane_center_offset_ + lane_size_ * target_lane), map_waypoints_s, map_waypoints_x, map_waypoints_y);
+    vector<double> xy = getXY(
+      car_s + distances[i],
+      lane_center_offset_ + lane_size_ * target_lane,
+      map_waypoints_s, map_waypoints_x, map_waypoints_y
+    );
     ptsx.push_back(xy[0]);
     ptsy.push_back(xy[1]);
   }
@@ -83,8 +140,14 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   double target_x = num_path_;
   double target_y = spline(target_x);
   double target_dist = sqrt(target_x * target_x + target_y * target_y);
-  double N = target_dist / distance(ref_vel_);
+  // slowly change velocity to avoid exceeding acceleration/jerk limits
 
+  if (ref_vel_ < max_vel) {
+    ref_vel_ += 0.15;
+  } else {
+    ref_vel_ -= 0.15;
+  }
+  double N = target_dist / distance(ref_vel_);
   double x_add_on = 0;
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
@@ -102,64 +165,6 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   }
 
   return {x_vals, y_vals};
-}
-
-vector<vector<double>> Trajectory::getTrajectory(
-  shared_ptr<State> transistion,
-  vector<vector<double>> sensor_fusion,
-  double car_x,
-  double car_y,
-  double car_s,
-  double car_d,
-  double car_yaw,
-  vector<double> previous_path_x,
-  vector<double> previous_path_y,
-  vector<double> map_waypoints_x,
-  vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s
-) {
-
-  double target_vehicle_id = transistion->target_vehicle_id_;
-  if (target_vehicle_id == -1) {
-    double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
-    target_vehicle_id = closest_vehicle_id;
-  }
-  double max_vel = max_vel_;
-  if (target_vehicle_id != -1) {
-    vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
-    double target_vehicle_s = target_vehicle[5];
-    max_vel = getLeadingVelocity(car_s, target_vehicle);
-  }
-
-  // slowly change velocity to avoid exceeding acceleration/jerk limits
-  if (ref_vel_ < max_vel) {
-    ref_vel_ += 0.15;
-  } else {
-    ref_vel_ -= 0.15;
-  }
-
-  // Build trajector from previous points and future points
-  vector<double> next_x_vals;
-  vector<double> next_y_vals;
-
-  int prev_size = previous_path_x.size();
-
-  // retain previous trajectory points
-  next_x_vals.insert(next_x_vals.end(), previous_path_x.begin(), previous_path_x.end());
-  next_y_vals.insert(next_y_vals.end(), previous_path_y.begin(), previous_path_y.end());
-
-  // generate new trajectory points
-  vector<vector<double>> future = getFutureTrajectory(
-    transistion->target_lane_,
-    sensor_fusion,
-    car_x, car_y, car_s, car_d, car_yaw,
-    previous_path_x, previous_path_y,
-    map_waypoints_x, map_waypoints_y, map_waypoints_s
-  );
-  next_x_vals.insert(next_x_vals.end(), future[0].begin(), future[0].end());
-  next_y_vals.insert(next_y_vals.end(), future[1].begin(), future[1].end());
-
-  return {next_x_vals, next_y_vals};
 }
 
 double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicle) {

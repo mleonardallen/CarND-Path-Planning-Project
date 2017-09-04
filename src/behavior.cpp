@@ -129,7 +129,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   } else {
 
     for (int i = 0; i < possible_trajectories.size(); i++) {
-      shared_ptr<PossibleTrajectory> current = possible_trajectories[0]; 
+      shared_ptr<PossibleTrajectory> current = possible_trajectories[i]; 
       while (current->prev_) {
         if (!current->prev_->lowest_) {
           current->prev_->lowest_ = current;

@@ -23,7 +23,8 @@ class Trajectory {
     std::vector<double> previous_path_y,
     std::vector<double> map_waypoints_x,
     std::vector<double> map_waypoints_y,
-    std::vector<double> map_waypoints_s
+    std::vector<double> map_waypoints_s,
+    double max_vel
   );
 
   std::vector<std::vector<double>> getTrajectory(
