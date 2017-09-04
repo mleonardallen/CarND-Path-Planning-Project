@@ -23,7 +23,8 @@ class Cost {
   );
 
   virtual double getCost(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> fromState,
+    std::shared_ptr<State> toState,
     double car_x,
     double car_y,
     std::vector<std::vector<double>> trajectory,
@@ -46,7 +47,8 @@ class SlowSpeedCost : public Cost {
   SlowSpeedCost();
 
   double getCost(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> fromState,
+    std::shared_ptr<State> toState,
     double car_x,
     double car_y,
     std::vector<std::vector<double>> trajectory,
@@ -62,7 +64,8 @@ class TooCloseCost : public Cost {
   TooCloseCost();
 
   double getCost(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> fromState,
+    std::shared_ptr<State> toState,
     double car_x,
     double car_y,
     std::vector<std::vector<double>> trajectory,
@@ -77,7 +80,8 @@ class CollideCost : public Cost {
   CollideCost();
 
   double getCost(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> fromState,
+    std::shared_ptr<State> toState,
     double car_x,
     double car_y,
     std::vector<std::vector<double>> trajectory,
@@ -92,7 +96,8 @@ class ChangeLaneCost : public Cost {
   ChangeLaneCost();
 
   double getCost(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> fromState,
+    std::shared_ptr<State> toState,
     double car_x,
     double car_y,
     std::vector<std::vector<double>> trajectory,

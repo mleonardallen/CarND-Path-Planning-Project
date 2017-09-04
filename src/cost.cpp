@@ -68,7 +68,8 @@ CollideCost::CollideCost() {
   weight_ = 1.;
 }
 double CollideCost::getCost(
-  shared_ptr<State> state,
+  shared_ptr<State> fromState,
+  shared_ptr<State> toState,
   double car_x,
   double car_y,
   std::vector<std::vector<double>> waypoints,
@@ -76,7 +77,7 @@ double CollideCost::getCost(
   vector<double> maps_x, vector<double> maps_y
 ) {
 
-  double buffer_s = 1.0;
+  double buffer_s = 0.5;
   double buffer_d = 0.5;
 
   double amount = getBufferViolations(
@@ -94,10 +95,11 @@ double CollideCost::getCost(
 }
 
 TooCloseCost::TooCloseCost() {
-  weight_ = 3.;
+  weight_ = 1.;
 }
 double TooCloseCost::getCost(
-  shared_ptr<State> state,
+  shared_ptr<State> fromState,
+  shared_ptr<State> toState,
   double car_x,
   double car_y,
   std::vector<std::vector<double>> waypoints,
@@ -127,7 +129,8 @@ SlowSpeedCost::SlowSpeedCost() {
   weight_ = 1.;
 }
 double SlowSpeedCost::getCost(
-  shared_ptr<State> state,
+  shared_ptr<State> fromState,
+  shared_ptr<State> toState,
   double car_x,
   double car_y,
   std::vector<std::vector<double>> waypoints,
@@ -153,18 +156,20 @@ double SlowSpeedCost::getCost(
     y1 = y2;
   }
 
+  double max_vel = trajectory.getMaxVelocity();
   double average = accumulate(speeds.begin(), speeds.end(), 0.0) / speeds.size();
-  double percent = (50 - average) / 50;
-  double amount = (percent * percent) * 10;
+  double percent = (max_vel - average) / max_vel;
+  double amount = sqrt(percent * percent);
 
   return amount * weight_;
 }
 
 ChangeLaneCost::ChangeLaneCost() {
-  weight_ = 1.;
+  weight_ = 0.001;
 }
 double ChangeLaneCost::getCost(
-  shared_ptr<State> state,
+  shared_ptr<State> fromState,
+  shared_ptr<State> toState,
   double car_x,
   double car_y,
   std::vector<std::vector<double>> waypoints,
@@ -172,6 +177,14 @@ double ChangeLaneCost::getCost(
   vector<double> maps_x,
   vector<double> maps_y
 ) {
-  double amount = 0;
+  double amount = 0.;
+  if (
+    toState->id_ == State::StateId::PREPARE_LANE_CHANGE_LEFT
+    || toState->id_ == State::StateId::PREPARE_LANE_CHANGE_RIGHT
+    || toState->id_ == State::StateId::LANE_CHANGE_LEFT
+    || toState->id_ == State::StateId::LANE_CHANGE_RIGHT
+  ) {
+    amount = 1.0;
+  }
   return amount * weight_;
 }

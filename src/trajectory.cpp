@@ -119,32 +119,22 @@ vector<vector<double>> Trajectory::getTrajectory(
 ) {
 
   double target_vehicle_id = transistion->target_vehicle_id_;
-  double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
   if (target_vehicle_id == -1) {
+    double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
     target_vehicle_id = closest_vehicle_id;
   }
-
   double max_vel = max_vel_;
   if (target_vehicle_id != -1) {
-
     vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
-    vector<double> closest_vehicle = sensor_fusion[closest_vehicle_id];
-
     double target_vehicle_s = target_vehicle[5];
-    double closest_vehicle_s = closest_vehicle[5];
-
-    // make sure not to run int the car in front of you even if trying to follow another car
-    max_vel = closest_vehicle_s < target_vehicle_s
-      ? getLeadingVelocity(car_s, closest_vehicle)
-      : getLeadingVelocity(car_s, target_vehicle);
+    max_vel = getLeadingVelocity(car_s, target_vehicle);
   }
 
-
-  // slowly change velocity to avoid exceeding jerk limits
+  // slowly change velocity to avoid exceeding acceleration/jerk limits
   if (ref_vel_ < max_vel) {
-    ref_vel_ += 0.5;
+    ref_vel_ += 0.15;
   } else {
-    ref_vel_ -= 0.5;
+    ref_vel_ -= 0.15;
   }
 
   // Build trajector from previous points and future points
@@ -389,4 +379,8 @@ int Trajectory::NextWaypoint(double x, double y, double theta, vector<double> ma
   }
 
   return closestWaypoint;
+}
+
+double Trajectory::getMaxVelocity() {
+  return max_vel_;
 }

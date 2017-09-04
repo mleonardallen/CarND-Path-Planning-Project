@@ -51,6 +51,7 @@ int main() {
     1, // target lane
     1 // target lane
   );
+  vector<shared_ptr<State>> states;
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -82,7 +83,7 @@ int main() {
   bool thread_is_done = false;
   h.onMessage([
     &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy,
-    &trajectory, &planner, &threads, &state, &thread_is_done
+    &trajectory, &planner, &threads, &states, &state, &thread_is_done
   ](
     uWS::WebSocket<uWS::SERVER> ws,
     char *data, size_t length,
@@ -127,7 +128,7 @@ int main() {
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
           // if planner is not currently working, start a new thread
-          if (!threads.size())
+          if (!threads.size() && !states.size())
           {
             vector<vector<double>> planner_waypoints;
             threads.emplace_back(
@@ -136,6 +137,7 @@ int main() {
               previous_path_x, previous_path_y,
               map_waypoints_x, map_waypoints_y, map_waypoints_s,
               sensor_fusion,
+              std::ref(states),
               std::ref(state),
               std::ref(thread_is_done)
             );
@@ -147,6 +149,10 @@ int main() {
             threads[0].join();
             threads.pop_back();
             thread_is_done = false;
+          }
+
+          if (states.size()) {
+            state = states[0];
           } else {
             int target_lane = trajectory.getLaneNumber(car_d);
             state = StateFactory::create(
@@ -157,7 +163,6 @@ int main() {
             );
           }
 
-          cout << " main --- ";
           state->print();
 
           vector<vector<double>> waypoints = trajectory.getTrajectory(
@@ -167,6 +172,12 @@ int main() {
             previous_path_x, previous_path_y,
             map_waypoints_x, map_waypoints_y, map_waypoints_s
           );
+
+          // check to see if we are done with current operation
+          int car_lane = trajectory.getLaneNumber(car_d);
+          if (states.size() && state->isComplete(car_lane)) {
+            states.erase(states.begin());
+          }
 
           // END
           msgJson["next_x"] = waypoints[0];

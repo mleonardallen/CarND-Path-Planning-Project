@@ -85,6 +85,7 @@ class Trajectory {
     std::vector<double> maps_y
   );
 
+  double getMaxVelocity();
   int NextWaypoint(double x, double y, double theta, std::vector<double> maps_x, std::vector<double> maps_y);
   int ClosestWaypoint(double x, double y, std::vector<double> maps_x, std::vector<double> maps_y);
 

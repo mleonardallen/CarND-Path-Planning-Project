@@ -71,7 +71,11 @@ bool LaneKeepState::isValid(shared_ptr<State> state, int car_lane, double diff_s
     && target_vehicle_id_ == -1;
 }
 
-vector<State::StateId> LaneKeepState::getTransitions() {
+bool LaneKeepState::isComplete(int car_lane) {
+  return true;
+}
+
+vector<State::StateId> LaneKeepState::getTransitions(int car_lane) {
   return {
     State::StateId::LANE_KEEP,
     State::StateId::PREPARE_LANE_CHANGE_LEFT,
@@ -98,10 +102,16 @@ bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, 
     && target_vehicle_id_ == -1
   ) return false;
 
+  // do not follow car if the car in front of you is closer.
   if (
     target_vehicle_id_ != -1
     && diff_closest_s < diff_s
   ) return false;
+
+  // already completed
+  // car is going same speed as target car
+  // car is behind target car
+  // car has a window to make turn
 
   return (
     target_vehicle_lane_ >= 0
@@ -114,12 +124,15 @@ bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, 
   );
 }
 
-vector<State::StateId> PrepareLaneChangeLeftState::getTransitions() {
-  return {
-    State::StateId::PREPARE_LANE_CHANGE_LEFT,
-    State::StateId::LANE_CHANGE_LEFT,
-    State::StateId::LANE_KEEP
-  };
+bool PrepareLaneChangeLeftState::isComplete(int car_lane) {
+  return true;
+}
+
+vector<State::StateId> PrepareLaneChangeLeftState::getTransitions(int car_lane) {
+  if (isComplete(car_lane)) {
+    return {State::StateId::LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
+  }
+  return {State::StateId::PREPARE_LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
 }
 
 // Prepare Lane Change Right
@@ -158,12 +171,15 @@ bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane,
   );
 }
 
-vector<State::StateId> PrepareLaneChangeRightState::getTransitions() {
-  return {
-    State::StateId::PREPARE_LANE_CHANGE_RIGHT,
-    State::StateId::LANE_CHANGE_RIGHT,
-    State::StateId::LANE_KEEP
-  };
+vector<State::StateId> PrepareLaneChangeRightState::getTransitions(int car_lane) {
+  if (isComplete(car_lane)) {
+    return {State::StateId::LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
+  }
+  return {State::StateId::PREPARE_LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
+}
+
+bool PrepareLaneChangeRightState::isComplete(int car_lane) {
+  return true;
 }
 
 // Lane Change Left
@@ -187,12 +203,15 @@ bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double 
   );
 }
 
-vector<State::StateId> LaneChangeLeftState::getTransitions() {
-  return {
-    State::StateId::LANE_CHANGE_LEFT,
-    State::StateId::PREPARE_LANE_CHANGE_LEFT,
-    State::StateId::LANE_KEEP
-  };
+bool LaneChangeLeftState::isComplete(int car_lane) {
+  return target_lane_ == car_lane;
+}
+
+vector<State::StateId> LaneChangeLeftState::getTransitions(int car_lane) {
+  if (isComplete(car_lane)) {
+    return {State::StateId::PREPARE_LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
+  }
+  return {State::StateId::LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
 }
 
 // Lane Change Right
@@ -216,10 +235,13 @@ bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double
   );
 }
 
-vector<State::StateId> LaneChangeRightState::getTransitions() {
-  return {
-    State::StateId::LANE_CHANGE_RIGHT,
-    State::StateId::PREPARE_LANE_CHANGE_RIGHT,
-    State::StateId::LANE_KEEP
-  };
+bool LaneChangeRightState::isComplete(int car_lane) {
+  return target_lane_ == car_lane;
+}
+
+vector<State::StateId> LaneChangeRightState::getTransitions(int car_lane) {
+  if (isComplete(car_lane)) {
+    return {State::StateId::PREPARE_LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
+  }
+  return {State::StateId::LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
 }
