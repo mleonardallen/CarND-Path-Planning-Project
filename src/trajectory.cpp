@@ -141,7 +141,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   // get the previous path velocity
   double ref_vel = previous_path_x.size() 
     ? ref_vel = getAverageVelocity({previous_path_x, previous_path_y})
-    : 0;
+    : 0.1;
 
   // increase/decrease speed to match reference veolocity
   double increment = 5.0;
