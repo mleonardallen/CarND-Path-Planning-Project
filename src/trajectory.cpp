@@ -7,8 +7,7 @@
 
 using namespace std;
 
-Trajectory::Trajectory() {
-}
+Trajectory::Trajectory() {}
 Trajectory::~Trajectory() {}
 
 vector<vector<double>> Trajectory::getTrajectory(
@@ -253,7 +252,6 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
 double Trajectory::pi() { return M_PI; }
 double Trajectory::deg2rad(double x) { return x * pi() / 180; }
 double Trajectory::rad2deg(double x) { return x * 180 / pi(); }
-
 double Trajectory::velocity(double vx, double vy) {return sqrt(vx * vx + vy * vy);}
 double Trajectory::velocity(double distance) {return distance / cycle_time_ms_;}
 double Trajectory::distance(double velocity) {return velocity * cycle_time_ms_;}
@@ -264,25 +262,14 @@ double Trajectory::distance(double s1, double s2) {
   double shifted_s2 = s2 - largest_s + max_s_;
   return shifted_s2 - shifted_s1;
 }
+int Trajectory::getLaneNumber(double d) {return (int) floor(d/lane_size_);}
+double Trajectory::getMaxVelocity() {return max_vel_;}
 
-int Trajectory::getLaneNumber(double d) {
-  return (int) floor(d / lane_size_);
-}
-
-vector<double> Trajectory::getLocalSpace(
-  double x,
-  double y,
-  double ref_x,
-  double ref_y,
-  double ref_yaw
-) {
-
+vector<double> Trajectory::getLocalSpace(double x, double y, double ref_x, double ref_y, double ref_yaw) {
   double shift_x = x - ref_x;
   double shift_y = y - ref_y;
-
   x = shift_x * cos(0 - ref_yaw) - shift_y * sin(0 - ref_yaw);
   y = shift_x * sin(0 - ref_yaw) + shift_y * cos(0 - ref_yaw);
-
   return {x, y};
 }
 
@@ -391,19 +378,14 @@ int Trajectory::ClosestWaypoint(double x, double y, vector<double> maps_x, vecto
   }
 
   return closestWaypoint;
-
 }
 
 int Trajectory::NextWaypoint(double x, double y, double theta, vector<double> maps_x, vector<double> maps_y)
 {
-
   int closestWaypoint = ClosestWaypoint(x,y,maps_x,maps_y);
-
   double map_x = maps_x[closestWaypoint];
   double map_y = maps_y[closestWaypoint];
-
   double heading = atan2( (map_y-y),(map_x-x) );
-
   double angle = fabs(theta-heading);
 
   if (angle > pi()/4)
@@ -412,8 +394,4 @@ int Trajectory::NextWaypoint(double x, double y, double theta, vector<double> ma
   }
 
   return closestWaypoint;
-}
-
-double Trajectory::getMaxVelocity() {
-  return max_vel_;
 }
