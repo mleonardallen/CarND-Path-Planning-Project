@@ -32,6 +32,8 @@ class State {
   int target_vehicle_id_;
   int target_vehicle_lane_;
   int target_lane_;
+  double lower_limit_ = -10;
+  double upper_limit_ = 45;
 };
 
 class LaneKeepState : public State {

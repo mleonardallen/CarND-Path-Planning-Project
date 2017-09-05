@@ -65,7 +65,7 @@ double Cost::getBufferViolations(
 }
 
 CollideCost::CollideCost() {
-  weight_ = 1.;
+  weight_ = 1000.;
 }
 double CollideCost::getCost(
   shared_ptr<State> fromState,
@@ -77,7 +77,7 @@ double CollideCost::getCost(
   vector<double> maps_x, vector<double> maps_y
 ) {
 
-  double buffer_s = 0.5;
+  double buffer_s = 1.2;
   double buffer_d = 0.5;
 
   double amount = getBufferViolations(
@@ -126,7 +126,7 @@ double TooCloseCost::getCost(
 }
 
 SlowSpeedCost::SlowSpeedCost() {
-  weight_ = 1.;
+  weight_ = 10.;
 }
 double SlowSpeedCost::getCost(
   shared_ptr<State> fromState,

@@ -14,7 +14,7 @@ State::StateId State::getId() {
 }
 
 void State::print() {
-  cout << name_ << ": " << "Vehcile " << target_vehicle_id_ << ", Vehicle Lane " << target_vehicle_lane_ << ", Target Lane " << target_lane_ << endl;;
+  cout << name_ << ": " << "Vehcile " << target_vehicle_id_ << ", Vehicle Lane " << target_vehicle_lane_ << ", Target Lane " << target_lane_ << endl;
 }
 
 string State::getName() {
@@ -119,8 +119,8 @@ bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, 
     && car_lane > 0
     && car_lane == target_lane_ // target lane is current lane
     // distance is in range of car
-    && diff_s > - 10
-    && diff_s < 60
+    && diff_s > lower_limit_
+    && diff_s < upper_limit_
   );
 }
 
@@ -166,8 +166,8 @@ bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane,
     && car_lane < 2
     && car_lane == target_lane_
     // distance is in range of car
-    && diff_s > - 10
-    && diff_s < 60
+    && diff_s > lower_limit_
+    && diff_s < upper_limit_
   );
 }
 
@@ -198,8 +198,8 @@ bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double 
     && target_vehicle_lane_ < 2
     && target_lane_ == car_lane - 1 // target lane is to the left
     // distance is in range of car
-    && diff_s > - 10
-    && diff_s < 60
+    && diff_s > lower_limit_
+    && diff_s < upper_limit_
   );
 }
 
@@ -230,8 +230,8 @@ bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double
     && target_vehicle_lane_ < 2
     && target_lane_ == car_lane + 1 // target lane is to the right
     // distance is in range of car
-    && diff_s > - 10
-    && diff_s < 60
+    && diff_s > lower_limit_
+    && diff_s < upper_limit_
   );
 }
 

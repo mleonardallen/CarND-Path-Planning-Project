@@ -31,6 +31,29 @@ PossibleTrajectory::PossibleTrajectory(
 }
 PossibleTrajectory::~PossibleTrajectory() {}
 
+void PossibleTrajectory::print(
+  vector<double> map_waypoints_x,
+  vector<double> map_waypoints_y
+) {
+  Trajectory trajectory;
+  cout << "Name: " << state_->name_;
+  cout << "\tVehcile " << state_->target_vehicle_id_;
+  cout << "\tVehicle Lane " << state_->target_vehicle_lane_;
+  cout << "\tTarget Lane " << state_->target_lane_;
+  cout << "\tCost: " << total_cost_;
+  cout << "\tAverage Speed: " << trajectory.getAverageVelocity(trajectory_);
+
+  vector<double> xs = trajectory_[0];
+  vector<double> ys = trajectory_[1];
+  double x = xs.back();
+  double y = ys.back();
+  vector<double> sd = trajectory.getFrenet(x, y, 0, map_waypoints_x, map_waypoints_y);
+  cout << "\tS: " << sd[0];
+  cout << "\tD: " << sd[1];
+  
+  cout << endl;
+}
+
 BehaviorPlanner::BehaviorPlanner() {}
 BehaviorPlanner::~BehaviorPlanner() {}
 
@@ -61,7 +84,8 @@ void BehaviorPlanner::transition(
   );
 
   shared_ptr<PossibleTrajectory> lowest = possible_trajectories[0];
-  for (int idx = 1; idx < possible_trajectories.size(); idx++) {
+  for (int idx = 0; idx < possible_trajectories.size(); idx++) {
+    shared_ptr<PossibleTrajectory> current = possible_trajectories[idx];
     if (possible_trajectories[idx]->total_cost_ < lowest->total_cost_) {
       lowest = possible_trajectories[idx];
     }
@@ -89,6 +113,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   int depth
 ) {
 
+  Trajectory trajectory;
   vector<shared_ptr<PossibleTrajectory>> possible_trajectories = BehaviorPlanner::getPossibleTrajectories(
     car_x, car_y, car_s, car_d, car_yaw,
     previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s,
@@ -98,29 +123,24 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   );
 
   if (depth > 1) {
-    Trajectory trajectory;
     depth = depth - 1;
     for (int i = 0; i < possible_trajectories.size(); i++) {
       // - RECURSION
-      vector<double> xs = possible_trajectories[i]->trajectory_[0];
-      vector<double> ys = possible_trajectories[i]->trajectory_[1];
-      double future_x = xs.back();
-      double future_y = ys.back();
-      vector<double> future_sd = trajectory.getFrenet(future_x, future_y, 0, map_waypoints_x, map_waypoints_y);
+      previous_path_x = possible_trajectories[i]->trajectory_[0];
+      previous_path_y = possible_trajectories[i]->trajectory_[1];
+      car_x = previous_path_x.back();
+      car_y = previous_path_y.back();
+      vector<double> sd = trajectory.getFrenet(car_x, car_y, 0, map_waypoints_x, map_waypoints_y);
 
-      int N = possible_trajectories[i]->trajectory_[0].size();
-      vector<vector<double>> future_sensor_fusion = getFutureSensorFusion(N, map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion);
+      sensor_fusion = getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion);
 
+      int N = trajectory.num_path_;
       getPossibleTrajectoriesRecursive(
-        future_x,
-        future_y,
-        future_sd[0],
-        future_sd[1],
-        car_yaw,
-        possible_trajectories[i]->trajectory_[0],
-        possible_trajectories[i]->trajectory_[1],
+        car_x, car_y, sd[0], sd[1], car_yaw,
+        {previous_path_x[N - 2], previous_path_x[N - 1]},
+        {previous_path_y[N - 2], previous_path_y[N - 1]},
         map_waypoints_x, map_waypoints_y, map_waypoints_s,
-        future_sensor_fusion,
+        sensor_fusion,
         possible_trajectories[i]->state_,
         possible_trajectories[i], // this pointer is modified to link to lowest cost next trajectory
         depth
@@ -129,15 +149,14 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   } else {
 
     for (int i = 0; i < possible_trajectories.size(); i++) {
+      // propogate lowest total cost trajectory and lowest total cost back to initial state
       shared_ptr<PossibleTrajectory> current = possible_trajectories[i]; 
       while (current->prev_) {
-        if (!current->prev_->lowest_) {
+        if (
+          !current->prev_->lowest_
+          || (current->total_cost_ < current->prev_->total_cost_)
+        ) {
           current->prev_->lowest_ = current;
-          // propogate total cost back to initial state
-          current->prev_->total_cost_ = current->total_cost_;
-        } else if (current->total_cost_ < current->prev_->lowest_->total_cost_) {
-          current->prev_->lowest_ = current;
-          // propogate total cost back to initial state
           current->prev_->total_cost_ = current->total_cost_;
         }
 
@@ -150,7 +169,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
 }
 
 vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
-  double car_x,double car_y, double car_s, double car_d, double car_yaw,
+  double car_x, double car_y, double car_s, double car_d, double car_yaw,
   vector<double> previous_path_x,
   vector<double> previous_path_y,
   vector<double> map_waypoints_x,
@@ -163,6 +182,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
 
   Trajectory trajectory;
   vector<shared_ptr<PossibleTrajectory>> trajectories;
+
+  // cost functions
   vector<shared_ptr<Cost>> costs = {
     shared_ptr<Cost>(new SlowSpeedCost()),
     shared_ptr<Cost>(new CollideCost()),
@@ -266,7 +287,6 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
 }
 
 vector<vector<double>> BehaviorPlanner::getFutureSensorFusion(
-  int N,
   vector<double> maps_x,
   vector<double> maps_y,
   vector<double> maps_s,
@@ -274,6 +294,7 @@ vector<vector<double>> BehaviorPlanner::getFutureSensorFusion(
 ) {
   Trajectory trajectory;
   vector<vector<double>> new_sensor_fusion;
+  int N = trajectory.num_path_;
 
   for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
 

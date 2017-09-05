@@ -11,8 +11,6 @@ Trajectory::Trajectory() {
 }
 Trajectory::~Trajectory() {}
 
-double Trajectory::ref_vel_ = 0;
-
 vector<vector<double>> Trajectory::getTrajectory(
   shared_ptr<State> transistion,
   vector<vector<double>> sensor_fusion,
@@ -29,7 +27,8 @@ vector<vector<double>> Trajectory::getTrajectory(
 ) {
 
   double target_vehicle_id = transistion->target_vehicle_id_;
-  if (target_vehicle_id == -1) {
+  int car_lane = getLaneNumber(car_d);
+  if (target_vehicle_id == -1 && car_lane == transistion->target_lane_) {
     double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
     target_vehicle_id = closest_vehicle_id;
   }
@@ -43,8 +42,6 @@ vector<vector<double>> Trajectory::getTrajectory(
   // Build trajector from previous points and future points
   vector<double> next_x_vals;
   vector<double> next_y_vals;
-
-  int prev_size = previous_path_x.size();
 
   // retain previous trajectory points
   next_x_vals.insert(next_x_vals.end(), previous_path_x.begin(), previous_path_x.end());
@@ -140,14 +137,22 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   double target_x = num_path_;
   double target_y = spline(target_x);
   double target_dist = sqrt(target_x * target_x + target_y * target_y);
-  // slowly change velocity to avoid exceeding acceleration/jerk limits
 
-  if (ref_vel_ < max_vel) {
-    ref_vel_ += 0.15;
+  // get the previous path velocity
+  double ref_vel = previous_path_x.size() 
+    ? ref_vel = getAverageVelocity({previous_path_x, previous_path_y})
+    : 0;
+
+  // increase/decrease speed to match reference veolocity
+  double increment = 5.0;
+  if (ref_vel < max_vel) {
+    double percent = (1 - (ref_vel / max_vel));
+    ref_vel += percent * increment;
   } else {
-    ref_vel_ -= 0.15;
+    ref_vel -= increment;
   }
-  double N = target_dist / distance(ref_vel_);
+
+  double N = target_dist / distance(ref_vel);
   double x_add_on = 0;
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
@@ -193,6 +198,7 @@ int Trajectory::getClosestVehicleId(
   vector<vector<double>> sensor_fusion
 ) {
   // get closest vehicle in current lane
+  // todo pass in car_lane
   int car_lane = getLaneNumber(car_d);
   int closest_vehicle_id = -1;
   double closest_diff_s = max_s_;

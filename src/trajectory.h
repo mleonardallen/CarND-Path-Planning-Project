@@ -91,16 +91,16 @@ class Trajectory {
   double getMaxVelocity();
   int NextWaypoint(double x, double y, double theta, std::vector<double> maps_x, std::vector<double> maps_y);
   int ClosestWaypoint(double x, double y, std::vector<double> maps_x, std::vector<double> maps_y);
+  int num_path_ = 30;
 
  private:
 
-  static double ref_vel_;
-
   double max_vel_ = 49.5;
+  double acceleration_ = 6;
   int lane_ = 1;
 
   // number of waypoints to include in a trajectory
-  int num_path_ = 20;
+  
 
   // each lane is 4 m wide
   double lane_size_ = 4.0;

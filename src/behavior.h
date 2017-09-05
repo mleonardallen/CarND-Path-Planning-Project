@@ -16,6 +16,10 @@ class PossibleTrajectory {
     std::shared_ptr<PossibleTrajectory> prev
   );
   virtual ~PossibleTrajectory();
+  void print(
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y
+  );
 
   std::shared_ptr<State> state_;
   std::vector<std::vector<double>> trajectory_;
@@ -92,7 +96,6 @@ class BehaviorPlanner {
   );
 
   static std::vector<std::vector<double>> getFutureSensorFusion(
-    int N,
     std::vector<double> maps_x,
     std::vector<double> maps_y,
     std::vector<double> maps_s,
