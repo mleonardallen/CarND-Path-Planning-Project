@@ -1,5 +1,6 @@
 #include <iostream>
 #include <memory>
+#include <iomanip>
 #include "behavior.h"
 #include "trajectory.h"
 #include "state.h"
@@ -36,8 +37,8 @@ void PossibleTrajectory::print(
   vector<double> map_waypoints_y
 ) {
   Trajectory trajectory;
-  cout << "Name: " << state_->name_;
-  cout << "\tVehcile " << state_->target_vehicle_id_;
+  cout << "Name: " << left << setw(30) << state_->name_;
+  cout << "Vehcile " << state_->target_vehicle_id_;
   cout << "\tVehicle Lane " << state_->target_vehicle_lane_;
   cout << "\tTarget Lane " << state_->target_lane_;
   cout << "\tCost: " << total_cost_;
@@ -137,6 +138,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
       int N = trajectory.num_path_;
       getPossibleTrajectoriesRecursive(
         car_x, car_y, sd[0], sd[1], car_yaw,
+        // previous path contains a couple points so we can get velocity
         {previous_path_x[N - 2], previous_path_x[N - 1]},
         {previous_path_y[N - 2], previous_path_y[N - 1]},
         map_waypoints_x, map_waypoints_y, map_waypoints_s,
@@ -295,15 +297,25 @@ vector<vector<double>> BehaviorPlanner::getFutureSensorFusion(
   Trajectory trajectory;
   vector<vector<double>> new_sensor_fusion;
   int N = trajectory.num_path_;
+  int previous_path_size = 2;
 
   for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
 
+    // calculate velocity (assume car is going in s direction)
     double vx = sensor_fusion[sf_idx][3];
     double vy = sensor_fusion[sf_idx][4];
     double velocity = trajectory.velocityVXVY(vx, vy);
 
-    double vehicle_s = sensor_fusion[sf_idx][5] + trajectory.distanceVT(velocity, trajectory.cycle_time_ms_) * N;
+    // get future vehicle_s
+    double distance = trajectory.distanceVT(velocity, trajectory.cycle_time_ms_) * (N - previous_path_size);
+    double vehicle_s = sensor_fusion[sf_idx][5];
+    vehicle_s = vehicle_s + distance;
+
+    // assume future d is the same
+    // @todo predictions
     double vehicle_d = sensor_fusion[sf_idx][6];
+
+    // get future x,y using s,d
     vector<double> xy = trajectory.getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
 
     new_sensor_fusion.push_back({

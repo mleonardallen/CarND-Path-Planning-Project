@@ -121,7 +121,18 @@ int main() {
           double end_path_d = j[1]["end_path_d"];
 
           // Sensor Fusion Data, a list of all other cars on the same side of the road.
-          vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
+          // Filter out cars that are not relavent
+          vector<vector<double>> sensor_fusion_all = j[1]["sensor_fusion"];
+          vector<vector<double>> sensor_fusion;
+          copy_if(
+            sensor_fusion_all.begin(),
+            sensor_fusion_all.end(),
+            std::back_inserter(sensor_fusion),
+            [&trajectory](const vector<double>& sf){
+              int vehicle_lane = trajectory.getLaneNumber(sf[6]);
+              return vehicle_lane >= 0 && vehicle_lane <= 2;
+            }
+          );
 
           json msgJson;
 
@@ -162,8 +173,6 @@ int main() {
               target_lane
             );
           }
-
-          state->print();
 
           vector<vector<double>> waypoints = trajectory.getTrajectory(
             state,

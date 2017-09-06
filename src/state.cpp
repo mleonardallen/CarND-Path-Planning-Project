@@ -114,9 +114,7 @@ bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, 
   // car has a window to make turn
 
   return (
-    target_vehicle_lane_ >= 0
-    && target_vehicle_lane_ <= 2
-    && car_lane > 0
+    car_lane > 0
     && car_lane == target_lane_ // target lane is current lane
     // distance is in range of car
     && diff_s > lower_limit_
@@ -161,9 +159,7 @@ bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane,
   ) return false;
 
   return (
-    target_vehicle_lane_ >= 0
-    && target_vehicle_lane_ <= 2
-    && car_lane < 2
+    car_lane < 2
     && car_lane == target_lane_
     // distance is in range of car
     && diff_s > lower_limit_
@@ -194,9 +190,7 @@ LaneChangeLeftState::LaneChangeLeftState(int target_vehicle_id, int target_vehic
 
 bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   return (
-    target_vehicle_lane_ > 0
-    && target_vehicle_lane_ < 2
-    && target_lane_ == car_lane - 1 // target lane is to the left
+    target_lane_ == car_lane - 1 // target lane is to the left
     // distance is in range of car
     && diff_s > lower_limit_
     && diff_s < upper_limit_
@@ -226,9 +220,7 @@ LaneChangeRightState::LaneChangeRightState(int target_vehicle_id, int target_veh
 
 bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
   return (
-    target_vehicle_lane_ > 0
-    && target_vehicle_lane_ < 2
-    && target_lane_ == car_lane + 1 // target lane is to the right
+    target_lane_ == car_lane + 1 // target lane is to the right
     // distance is in range of car
     && diff_s > lower_limit_
     && diff_s < upper_limit_

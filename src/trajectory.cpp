@@ -108,7 +108,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
 
   // get future points for spline
   double target_d = lane_center_offset_ + lane_size_ * target_lane;
-  vector<int> distances = {35, 60, 90};
+  vector<int> distances = {30, 60, 90};
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
       car_s + distances[i], target_d,
