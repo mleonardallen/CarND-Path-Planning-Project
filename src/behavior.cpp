@@ -199,7 +199,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
   double diff_closest_s = 0;
   if (closest_vehicle_id != -1) {
     closest_vehicle_s = sensor_fusion[closest_vehicle_id][5];
-    diff_closest_s = trajectory.distance(car_s, closest_vehicle_s);
+    diff_closest_s = trajectory.distanceS1S2(car_s, closest_vehicle_s);
   }
 
   // get target vehicle ids
@@ -224,7 +224,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
         double target_vehicle_s = sensor_fusion[target_vehicle_id][5];
         double target_vehicle_d = sensor_fusion[target_vehicle_id][6];
         
-        diff_s = trajectory.distance(car_s, target_vehicle_s);
+        diff_s = trajectory.distanceS1S2(car_s, target_vehicle_s);
         target_vehicle_lane = trajectory.getLaneNumber(target_vehicle_d);
       }
 
@@ -300,9 +300,9 @@ vector<vector<double>> BehaviorPlanner::getFutureSensorFusion(
 
     double vx = sensor_fusion[sf_idx][3];
     double vy = sensor_fusion[sf_idx][4];
-    double velocity = trajectory.velocity(vx, vy);
+    double velocity = trajectory.velocityVXVY(vx, vy);
 
-    double vehicle_s = sensor_fusion[sf_idx][5] + trajectory.distance(velocity) * N;
+    double vehicle_s = sensor_fusion[sf_idx][5] + trajectory.distanceVT(velocity, trajectory.cycle_time_ms_) * N;
     double vehicle_d = sensor_fusion[sf_idx][6];
     vector<double> xy = trajectory.getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
 

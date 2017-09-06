@@ -107,11 +107,11 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   }
 
   // get future points for spline
-  vector<int> distances = {30, 60, 90};
+  double target_d = lane_center_offset_ + lane_size_ * target_lane;
+  vector<int> distances = {35, 60, 90};
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
-      car_s + distances[i],
-      lane_center_offset_ + lane_size_ * target_lane,
+      car_s + distances[i], target_d,
       map_waypoints_s, map_waypoints_x, map_waypoints_y
     );
     ptsx.push_back(xy[0]);
@@ -138,28 +138,17 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
   // get the previous path velocity
-  double ref_vel = previous_path_x.size() 
-    ? ref_vel = getAverageVelocity({previous_path_x, previous_path_y})
-    : 0.1;
-
-  // increase/decrease speed to match reference veolocity
-  double increment = 5.0;
-  if (ref_vel < max_vel) {
-    double percent = (1 - (ref_vel / max_vel));
-    ref_vel += percent * increment;
-  } else {
-    ref_vel -= increment;
-  }
-
-  double N = target_dist / distance(ref_vel);
+  double ref_vel = velocityWaypoints({previous_path_x, previous_path_y});
   double x_add_on = 0;
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
 
-    double x_point = x_add_on + target_x / N;
+    double acceleration = (ref_vel < max_vel) ? acceleration_ : -acceleration_;
+    double x_point = x_add_on + distanceVAT(ref_vel, acceleration, cycle_time_ms_);
     double y_point = spline(x_point);
 
     x_add_on = x_point;
+    ref_vel = velocityVAT(ref_vel, acceleration, cycle_time_ms_);
 
     // rotate back to normal after rotating earlier
     vector<double> xy = getGlobalSpace(x_point, y_point, ref_x, ref_y, ref_yaw);
@@ -177,10 +166,10 @@ double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicl
   double target_vehicle_vy = target_vehicle[4];
   double target_vehicle_s = target_vehicle[5];
   double target_vehicle_d = target_vehicle[6];
-  double target_vehicle_speed = velocity(target_vehicle_vx, target_vehicle_vy);
+  double target_vehicle_speed = velocityVXVY(target_vehicle_vx, target_vehicle_vy);
 
   // ramp down velocity slowly if approaching car
-  double diff_s = distance(car_s, target_vehicle_s);
+  double diff_s = distanceS1S2(car_s, target_vehicle_s);
   if (diff_s < num_path_) {
     double percent_ref_ = (num_path_ - diff_s) / num_path_;
     double diff_max = max_vel_ - target_vehicle_speed;
@@ -209,7 +198,7 @@ int Trajectory::getClosestVehicleId(
     double target_vehicle_d = sensor_fusion[sf_idx][6];
 
     double target_vehicle_lane = getLaneNumber(target_vehicle_d);
-    double diff_s = distance(car_s, target_vehicle_s);
+    double diff_s = distanceS1S2(car_s, target_vehicle_s);
 
     if (
       target_vehicle_lane != car_lane ||
@@ -236,8 +225,8 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
   for (int idx = 1; idx < waypoints[0].size(); idx++) {
     double x2 = waypoints[0][idx];
     double y2 = waypoints[1][idx];
-    double dist = distance(x1, y1, x2, y2);
-    double speed = velocity(dist);
+    double dist = distanceX1Y1X2Y2(x1, y1, x2, y2);
+    double speed = velocityDT(dist, cycle_time_ms_);
     speeds.push_back(speed);
 
     x1 = x2;
@@ -252,11 +241,30 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
 double Trajectory::pi() { return M_PI; }
 double Trajectory::deg2rad(double x) { return x * pi() / 180; }
 double Trajectory::rad2deg(double x) { return x * 180 / pi(); }
-double Trajectory::velocity(double vx, double vy) {return sqrt(vx * vx + vy * vy);}
-double Trajectory::velocity(double distance) {return distance / cycle_time_ms_;}
-double Trajectory::distance(double velocity) {return velocity * cycle_time_ms_;}
-double Trajectory::distance(double x1, double y1, double x2, double y2) {return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));}
-double Trajectory::distance(double s1, double s2) {
+
+double Trajectory::velocityVXVY(double vx, double vy) {return sqrt(vx * vx + vy * vy);}
+double Trajectory::velocityDT(double distance, double t) {return distance / t;}
+double Trajectory::velocityVAT(double v, double acceleration, double t) {return v + acceleration * t;}
+double Trajectory::velocityWaypoints(vector<vector<double>> waypoints) {
+
+  if (waypoints[0].size() < 2) {
+    return 0.01;
+  }
+
+  double x1 = waypoints[0][waypoints[0].size() - 2];
+  double y1 = waypoints[1][waypoints[1].size() - 2];
+  double x2 = waypoints[0][waypoints[0].size() - 1];
+  double y2 = waypoints[1][waypoints[1].size() - 1];
+
+  double dist = distanceX1Y1X2Y2(x1, y1, x2, y2);
+  return velocityDT(dist, cycle_time_ms_);
+}
+
+// s = vt + (1/2) at^2
+double Trajectory::distanceVAT(double velocity, double acceleration, double t) {return velocity * t + (1/2) * acceleration * t * t;}
+double Trajectory::distanceVT(double velocity, double t) {return velocity * t;}
+double Trajectory::distanceX1Y1X2Y2(double x1, double y1, double x2, double y2) {return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));}
+double Trajectory::distanceS1S2(double s1, double s2) {
   double largest_s = s1 > s2 ? s1 : s2;
   double shifted_s1 = s1 - largest_s + max_s_;
   double shifted_s2 = s2 - largest_s + max_s_;
@@ -331,14 +339,14 @@ vector<double> Trajectory::getFrenet(double x, double y, double theta, vector<do
   double proj_x = proj_norm*n_x;
   double proj_y = proj_norm*n_y;
 
-  double frenet_d = distance(x_x,x_y,proj_x,proj_y);
+  double frenet_d = distanceX1Y1X2Y2(x_x,x_y,proj_x,proj_y);
 
   //see if d value is positive or negative by comparing it to a center point
 
   double center_x = 1000-maps_x[prev_wp];
   double center_y = 2000-maps_y[prev_wp];
-  double centerToPos = distance(center_x,center_y,x_x,x_y);
-  double centerToRef = distance(center_x,center_y,proj_x,proj_y);
+  double centerToPos = distanceX1Y1X2Y2(center_x,center_y,x_x,x_y);
+  double centerToRef = distanceX1Y1X2Y2(center_x,center_y,proj_x,proj_y);
 
   if(centerToPos <= centerToRef)
   {
@@ -349,10 +357,10 @@ vector<double> Trajectory::getFrenet(double x, double y, double theta, vector<do
   double frenet_s = 0;
   for(int i = 0; i < prev_wp; i++)
   {
-    frenet_s += distance(maps_x[i],maps_y[i],maps_x[i+1],maps_y[i+1]);
+    frenet_s += distanceX1Y1X2Y2(maps_x[i],maps_y[i],maps_x[i+1],maps_y[i+1]);
   }
 
-  frenet_s += distance(0,0,proj_x,proj_y);
+  frenet_s += distanceX1Y1X2Y2(0,0,proj_x,proj_y);
 
   return {frenet_s,frenet_d};
 
@@ -368,7 +376,7 @@ int Trajectory::ClosestWaypoint(double x, double y, vector<double> maps_x, vecto
   {
     double map_x = maps_x[i];
     double map_y = maps_y[i];
-    double dist = distance(x,y,map_x,map_y);
+    double dist = distanceX1Y1X2Y2(x,y,map_x,map_y);
     if(dist < closestLen)
     {
       closestLen = dist;

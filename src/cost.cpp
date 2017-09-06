@@ -32,11 +32,11 @@ double Cost::getBufferViolations(
     double target_vehicle_s = sensor_fusion[sf_idx][5];
     double target_vehicle_d = sensor_fusion[sf_idx][6];
 
-    double velocity = trajectory.velocity(vx, vy);
+    double velocity = trajectory.velocityVXVY(vx, vy);
     
     for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
 
-      target_vehicle_s += trajectory.distance(velocity);
+      target_vehicle_s += trajectory.distanceVT(velocity, trajectory.cycle_time_ms_);
 
       double waypoint_x = waypoints[0][w_idx];
       double waypoint_y = waypoints[1][w_idx];
