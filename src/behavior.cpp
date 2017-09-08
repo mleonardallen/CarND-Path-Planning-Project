@@ -11,14 +11,24 @@ using namespace std;
 PossibleTrajectory::PossibleTrajectory(
     shared_ptr<State> state,
     vector<vector<double>> trajectory,
+    vector<vector<double>> sensor_fusion,
     double cost,
+    double car_x, double car_y, double car_s, double car_d, double car_yaw,
     int target_leading_vehicle_id,
     int target_lane_id,
     shared_ptr<PossibleTrajectory> prev
 ) {
   state_ = state;
   trajectory_ = trajectory;
+  sensor_fusion_ = sensor_fusion;
   cost_ = cost;
+
+  car_x_ = car_x;
+  car_y_ = car_y;
+  car_s_ = car_s;
+  car_d_ = car_d;
+  car_yaw_ = car_yaw;
+
   total_cost_ = cost;
   target_leading_vehicle_id_ = target_leading_vehicle_id;
   target_lane_id_ = target_lane_id;
@@ -39,10 +49,19 @@ void PossibleTrajectory::print(
   Trajectory trajectory;
   cout << "Name: " << left << setw(30) << state_->name_;
   cout << "Vehcile " << state_->target_vehicle_id_;
+  cout << "Vehcile " << target_leading_vehicle_id_;
   cout << "\tVehicle Lane " << state_->target_vehicle_lane_;
   cout << "\tTarget Lane " << state_->target_lane_;
   cout << "\tCost: " << total_cost_;
-  cout << "\tAverage Speed: " << trajectory.getAverageVelocity(trajectory_);
+  cout << "\tAvg V: " << trajectory.getAverageVelocity(trajectory_);
+  cout << "\tMax V: " << trajectory.getMaxVelocity(car_s_, car_d_, state_, sensor_fusion_);
+
+  int id = trajectory.getClosestVehicleId(car_d_, car_s_, sensor_fusion_);
+  cout << "\tClosest Vehicle: " << id;
+
+  if (id != -1) {
+    cout << "\tDistance: " << trajectory.distanceS1S2(car_s_, sensor_fusion_[id][5]);
+  }
 
   vector<double> xs = trajectory_[0];
   vector<double> ys = trajectory_[1];
@@ -230,6 +249,11 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
         target_vehicle_lane = trajectory.getLaneNumber(target_vehicle_d);
       }
 
+      // ignore vehicles that aren't on this side of the road
+      if (!(target_vehicle_lane >= 0 && target_vehicle_lane <= 2)) {
+        continue;
+      };
+
       // find trajectories for each lane
       vector<int> target_lanes = {0, 1, 2};
       for (int l_idx = 0; l_idx < target_lanes.size(); l_idx++) {
@@ -275,7 +299,9 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
           new PossibleTrajectory(
             toState,
             possible_trajectory,
+            sensor_fusion,
             cost,
+            car_x, car_y, car_s, car_d, car_yaw,
             target_vehicle_id,
             target_lanes[l_idx],
             prev_possible_trajectory

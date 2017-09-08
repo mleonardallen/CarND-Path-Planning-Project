@@ -10,9 +10,12 @@ class PossibleTrajectory {
   PossibleTrajectory(
     std::shared_ptr<State> state,
     std::vector<std::vector<double>> trajectory,
+    std::vector<std::vector<double>> sensor_fusion,
     double cost,
+    double car_x, double car_y, double car_s, double car_d, double car_yaw,
     int target_lane_id,
     int target_leading_vehicle_id,
+    // previous trajectory
     std::shared_ptr<PossibleTrajectory> prev
   );
   virtual ~PossibleTrajectory();
@@ -23,6 +26,13 @@ class PossibleTrajectory {
 
   std::shared_ptr<State> state_;
   std::vector<std::vector<double>> trajectory_;
+  std::vector<std::vector<double>> sensor_fusion_;
+
+  double car_x_;
+  double car_y_;
+  double car_s_;
+  double car_d_;
+  double car_yaw_;
 
   double cost_;
   double total_cost_;

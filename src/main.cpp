@@ -122,28 +122,18 @@ int main() {
 
           // Sensor Fusion Data, a list of all other cars on the same side of the road.
           // Filter out cars that are not relavent
-          vector<vector<double>> sensor_fusion_all = j[1]["sensor_fusion"];
-          vector<vector<double>> sensor_fusion;
-          copy_if(
-            sensor_fusion_all.begin(),
-            sensor_fusion_all.end(),
-            std::back_inserter(sensor_fusion),
-            [&trajectory](const vector<double>& sf){
-              int vehicle_lane = trajectory.getLaneNumber(sf[6]);
-              return vehicle_lane >= 0 && vehicle_lane <= 2;
-            }
-          );
-
+          vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
           json msgJson;
 
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
-
           // if planner is not currently working, start a new thread
           if (!threads.size() && !states.size())
           {
             vector<vector<double>> planner_waypoints;
             threads.emplace_back(
+              // method
               planner.transition,
+              // parameters
               car_x, car_y, car_s, car_d, car_yaw,
               previous_path_x, previous_path_y,
               map_waypoints_x, map_waypoints_y, map_waypoints_s,
@@ -238,83 +228,3 @@ int main() {
   }
   h.run();
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

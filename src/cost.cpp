@@ -149,7 +149,7 @@ double SlowSpeedCost::getCost(
 }
 
 ChangeLaneCost::ChangeLaneCost() {
-  weight_ = 0.001;
+  weight_ = 1.;
 }
 double ChangeLaneCost::getCost(
   shared_ptr<State> fromState,
