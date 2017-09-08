@@ -105,13 +105,6 @@ class BehaviorPlanner {
     std::shared_ptr<PossibleTrajectory> prev
   );
 
-  static std::vector<std::vector<double>> getFutureSensorFusion(
-    std::vector<double> maps_x,
-    std::vector<double> maps_y,
-    std::vector<double> maps_s,
-    std::vector<std::vector<double>> sensor_fusion
-  );
-
  private:
 
 };

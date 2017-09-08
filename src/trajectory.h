@@ -12,7 +12,7 @@ class Trajectory {
   virtual ~Trajectory();
 
   std::vector<std::vector<double>> getFutureTrajectory(
-    int target_lane_id,
+    std::shared_ptr<State> toState,
     std::vector<std::vector<double>> sensor_fusion,
     double car_x,
     double car_y,
@@ -23,12 +23,11 @@ class Trajectory {
     std::vector<double> previous_path_y,
     std::vector<double> map_waypoints_x,
     std::vector<double> map_waypoints_y,
-    std::vector<double> map_waypoints_s,
-    double max_vel
+    std::vector<double> map_waypoints_s
   );
 
   std::vector<std::vector<double>> getTrajectory(
-    std::shared_ptr<State> transition,
+    std::shared_ptr<State> toState,
     std::vector<std::vector<double>> sensor_fusion,
     double car_x,
     double car_y,
@@ -49,6 +48,14 @@ class Trajectory {
   int getClosestVehicleId(double car_d, double car_s, std::vector<std::vector<double>> sensor_fusion);
 
   double getAverageVelocity(std::vector<std::vector<double>> waypoints);
+
+  std::vector<std::vector<double>> getFutureSensorFusion(
+    std::vector<double> maps_x,
+    std::vector<double> maps_y,
+    std::vector<double> maps_s,
+    std::vector<std::vector<double>> sensor_fusion,
+    int N
+  );
 
   double pi();
 
@@ -92,6 +99,12 @@ class Trajectory {
   );
 
   double getMaxVelocity();
+  double getMaxVelocity(
+    double car_s,
+    double car_d,
+    std::shared_ptr<State> toState,
+    std::vector<std::vector<double>> sensor_fusion
+  );
   int NextWaypoint(double x, double y, double theta, std::vector<double> maps_x, std::vector<double> maps_y);
   int ClosestWaypoint(double x, double y, std::vector<double> maps_x, std::vector<double> maps_y);
   int num_path_ = 30;
@@ -105,6 +118,7 @@ class Trajectory {
 
   double max_vel_ = 49.5;
   double acceleration_ = 40;
+  double safe_leading_s_ = 30;
 
   // number of waypoints to include in a trajectory
   // each lane is 4 m wide

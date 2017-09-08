@@ -152,9 +152,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
       car_y = previous_path_y.back();
       vector<double> sd = trajectory.getFrenet(car_x, car_y, 0, map_waypoints_x, map_waypoints_y);
 
-      sensor_fusion = getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion);
-
       int N = trajectory.num_path_;
+      sensor_fusion = trajectory.getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, N - 2);
       getPossibleTrajectoriesRecursive(
         car_x, car_y, sd[0], sd[1], car_yaw,
         // previous path contains a couple points so we can get velocity
@@ -314,46 +313,4 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
   return trajectories;
 }
 
-vector<vector<double>> BehaviorPlanner::getFutureSensorFusion(
-  vector<double> maps_x,
-  vector<double> maps_y,
-  vector<double> maps_s,
-  vector<vector<double>> sensor_fusion
-) {
-  Trajectory trajectory;
-  vector<vector<double>> new_sensor_fusion;
-  int N = trajectory.num_path_;
-  int previous_path_size = 2;
 
-  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
-
-    // calculate velocity (assume car is going in s direction)
-    double vx = sensor_fusion[sf_idx][3];
-    double vy = sensor_fusion[sf_idx][4];
-    double velocity = trajectory.velocityVXVY(vx, vy);
-
-    // get future vehicle_s
-    double distance = trajectory.distanceVT(velocity, trajectory.cycle_time_ms_) * (N - previous_path_size);
-    double vehicle_s = sensor_fusion[sf_idx][5];
-    vehicle_s = vehicle_s + distance;
-
-    // assume future d is the same
-    // @todo predictions
-    double vehicle_d = sensor_fusion[sf_idx][6];
-
-    // get future x,y using s,d
-    vector<double> xy = trajectory.getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
-
-    new_sensor_fusion.push_back({
-      sensor_fusion[sf_idx][0], // id
-      xy[0], // x
-      xy[1], // y
-      vx,
-      vy,
-      vehicle_s,
-      vehicle_d
-    });
-  }
-
-  return new_sensor_fusion;
-}

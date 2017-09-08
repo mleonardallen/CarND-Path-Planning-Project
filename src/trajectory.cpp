@@ -11,7 +11,7 @@ Trajectory::Trajectory() {}
 Trajectory::~Trajectory() {}
 
 vector<vector<double>> Trajectory::getTrajectory(
-  shared_ptr<State> transistion,
+  shared_ptr<State> toState,
   vector<vector<double>> sensor_fusion,
   double car_x,
   double car_y,
@@ -25,19 +25,6 @@ vector<vector<double>> Trajectory::getTrajectory(
   vector<double> map_waypoints_s
 ) {
 
-  double target_vehicle_id = transistion->target_vehicle_id_;
-  int car_lane = getLaneNumber(car_d);
-  if (target_vehicle_id == -1 && car_lane == transistion->target_lane_) {
-    double closest_vehicle_id = getClosestVehicleId(car_d, car_s, sensor_fusion);
-    target_vehicle_id = closest_vehicle_id;
-  }
-  double max_vel = max_vel_;
-  if (target_vehicle_id != -1) {
-    vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
-    double target_vehicle_s = target_vehicle[5];
-    max_vel = getLeadingVelocity(car_s, target_vehicle);
-  }
-
   // Build trajector from previous points and future points
   vector<double> next_x_vals;
   vector<double> next_y_vals;
@@ -48,12 +35,10 @@ vector<vector<double>> Trajectory::getTrajectory(
 
   // generate new trajectory points
   vector<vector<double>> future = getFutureTrajectory(
-    transistion->target_lane_,
+    toState,
     sensor_fusion,
     car_x, car_y, car_s, car_d, car_yaw,
-    previous_path_x, previous_path_y,
-    map_waypoints_x, map_waypoints_y, map_waypoints_s,
-    max_vel
+    previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s
   );
   next_x_vals.insert(next_x_vals.end(), future[0].begin(), future[0].end());
   next_y_vals.insert(next_y_vals.end(), future[1].begin(), future[1].end());
@@ -62,7 +47,7 @@ vector<vector<double>> Trajectory::getTrajectory(
 }
 
 vector<vector<double>> Trajectory::getFutureTrajectory(
-  int target_lane,
+  shared_ptr<State> toState,
   vector<vector<double>> sensor_fusion,
   double car_x,
   double car_y,
@@ -73,8 +58,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   vector<double> previous_path_y,
   vector<double> map_waypoints_x,
   vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s,
-  double max_vel
+  vector<double> map_waypoints_s
 ) {
   std::vector<double> ptsx;
   std::vector<double> ptsy;
@@ -107,7 +91,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   }
 
   // get future points for spline
-  double target_d = lane_center_offset_ + lane_size_ * target_lane;
+  double target_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
   vector<int> distances = {30, 60, 90};
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
@@ -138,11 +122,12 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
   // get the previous path velocity
-  double ref_vel = velocityWaypoints({previous_path_x, previous_path_y});
   double x_add_on = 0;
+  double ref_vel = velocityWaypoints({previous_path_x, previous_path_y});
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
 
+    double max_vel = getMaxVelocity(car_s, car_d, toState, sensor_fusion);
     double acceleration = (ref_vel < max_vel) ? acceleration_ : -acceleration_;
     double x_point = x_add_on + distanceVAT(ref_vel, acceleration, cycle_time_ms_);
     double y_point = spline(x_point);
@@ -150,8 +135,16 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
     x_add_on = x_point;
     ref_vel = velocityVAT(ref_vel, acceleration, cycle_time_ms_);
 
+    // update sensor fusion to 1 timestep in the future.
+    sensor_fusion = getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, 1);
+
     // rotate back to normal after rotating earlier
     vector<double> xy = getGlobalSpace(x_point, y_point, ref_x, ref_y, ref_yaw);
+
+    // update s,d for when we recalculate max velocity
+    vector<double> sd = getFrenet(xy[0], xy[1], 0, map_waypoints_x, map_waypoints_y);
+    car_s = sd[0];
+    car_d = sd[1];
 
     x_vals.push_back(xy[0]);
     y_vals.push_back(xy[1]);
@@ -170,10 +163,10 @@ double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicl
 
   // ramp down velocity slowly if approaching car
   double diff_s = distanceS1S2(car_s, target_vehicle_s);
-  if (diff_s < num_path_) {
-    double percent_ref_ = (num_path_ - diff_s) / num_path_;
+  if (diff_s < safe_leading_s_) {
+    double percent_ref = (safe_leading_s_ - diff_s) / safe_leading_s_;
     double diff_max = max_vel_ - target_vehicle_speed;
-    return max_vel_ - diff_max * percent_ref_;
+    return max_vel_ - diff_max * percent_ref;
   }
 
   return max_vel_;
@@ -181,8 +174,8 @@ double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicl
 
 // 
 int Trajectory::getClosestVehicleId(
-  double car_d, 
   double car_s,
+  double car_d,
   vector<vector<double>> sensor_fusion
 ) {
   // get closest vehicle in current lane
@@ -272,6 +265,73 @@ double Trajectory::distanceS1S2(double s1, double s2) {
 }
 int Trajectory::getLaneNumber(double d) {return (int) floor(d/lane_size_);}
 double Trajectory::getMaxVelocity() {return max_vel_;}
+
+double Trajectory::getMaxVelocity(
+  double car_s,
+  double car_d,
+  shared_ptr<State> toState,
+  vector<vector<double>> sensor_fusion
+) {
+  double max_vel = max_vel_;
+  double target_vehicle_id = toState->target_vehicle_id_;
+  int car_lane = getLaneNumber(car_d);
+
+  if (target_vehicle_id == -1 && car_lane == toState->target_lane_) {
+    double closest_vehicle_id = getClosestVehicleId(car_s, car_d, sensor_fusion);
+    target_vehicle_id = closest_vehicle_id;
+  }
+ 
+  if (target_vehicle_id != -1) {
+    vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
+    double target_vehicle_s = target_vehicle[5];
+    max_vel = getLeadingVelocity(car_s, target_vehicle);
+  }
+
+  return max_vel;
+}
+
+vector<vector<double>> Trajectory::getFutureSensorFusion(
+  vector<double> maps_x,
+  vector<double> maps_y,
+  vector<double> maps_s,
+  vector<vector<double>> sensor_fusion,
+  int N
+) {
+  Trajectory trajectory;
+  vector<vector<double>> new_sensor_fusion;
+
+  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
+
+    // calculate velocity (assume car is going in s direction)
+    double vx = sensor_fusion[sf_idx][3];
+    double vy = sensor_fusion[sf_idx][4];
+    double velocity = velocityVXVY(vx, vy);
+
+    // get future vehicle_s
+    double distance = distanceVT(velocity, cycle_time_ms_) * N;
+    double vehicle_s = sensor_fusion[sf_idx][5];
+    vehicle_s = vehicle_s + distance;
+
+    // assume future d is the same
+    // @todo predictions
+    double vehicle_d = sensor_fusion[sf_idx][6];
+
+    // get future x,y using s,d
+    vector<double> xy = getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
+
+    new_sensor_fusion.push_back({
+      sensor_fusion[sf_idx][0], // id
+      xy[0], // x
+      xy[1], // y
+      vx,
+      vy,
+      vehicle_s,
+      vehicle_d
+    });
+  }
+
+  return new_sensor_fusion;
+}
 
 vector<double> Trajectory::getLocalSpace(double x, double y, double ref_x, double ref_y, double ref_yaw) {
   double shift_x = x - ref_x;
