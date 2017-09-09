@@ -92,7 +92,8 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
 
   // get future points for spline
   double target_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
-  vector<int> distances = {30, 60, 90};
+  vector<int> distances = {40, 60, 90};
+  vector<double> ds = {target_d, target_d, target_d};
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
       car_s + distances[i], target_d,
@@ -191,12 +192,12 @@ int Trajectory::getClosestVehicleId(
     double target_vehicle_d = sensor_fusion[sf_idx][6];
 
     double target_vehicle_lane = getLaneNumber(target_vehicle_d);
-    double diff_s = distanceS1S2(car_s, target_vehicle_s);
+    if (target_vehicle_lane != car_lane) {
+      continue;
+    }
 
-    if (
-      target_vehicle_lane != car_lane ||
-      diff_s < 0 // already passed car
-    ) {
+    double diff_s = distanceS1S2(car_s, target_vehicle_s);
+    if (diff_s < 0) {
       continue;
     }
 
@@ -276,11 +277,13 @@ double Trajectory::getMaxVelocity(
   double target_vehicle_id = toState->target_vehicle_id_;
   int car_lane = getLaneNumber(car_d);
 
-  if (target_vehicle_id == -1 && car_lane == toState->target_lane_) {
+  // find the closest car in current lane
+  if (target_vehicle_id == -1) {
     double closest_vehicle_id = getClosestVehicleId(car_s, car_d, sensor_fusion);
     target_vehicle_id = closest_vehicle_id;
   }
  
+  // if approaching a car, scale down max velocity to match that car
   if (target_vehicle_id != -1) {
     vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
     double target_vehicle_s = target_vehicle[5];
@@ -303,26 +306,30 @@ vector<vector<double>> Trajectory::getFutureSensorFusion(
   for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
 
     // calculate velocity (assume car is going in s direction)
+    double x = sensor_fusion[sf_idx][1];
+    double y = sensor_fusion[sf_idx][2];
     double vx = sensor_fusion[sf_idx][3];
     double vy = sensor_fusion[sf_idx][4];
-    double velocity = velocityVXVY(vx, vy);
-
-    // get future vehicle_s
-    double distance = distanceVT(velocity, cycle_time_ms_) * N;
     double vehicle_s = sensor_fusion[sf_idx][5];
-    vehicle_s = vehicle_s + distance;
-
-    // assume future d is the same
-    // @todo predictions
     double vehicle_d = sensor_fusion[sf_idx][6];
 
-    // get future x,y using s,d
-    vector<double> xy = getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
+    int lane = getLaneNumber(vehicle_d);
+    if (lane >= 0 && lane <= 2) {
+      // get future vehicle_s
+      double velocity = velocityVXVY(vx, vy);
+      double distance = distanceVT(velocity, cycle_time_ms_) * N;
+      vehicle_s = vehicle_s + distance;
+
+      // get future x,y using s,d
+      vector<double> xy = getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
+      x = xy[0];
+      y = xy[1];
+    }
 
     new_sensor_fusion.push_back({
       sensor_fusion[sf_idx][0], // id
-      xy[0], // x
-      xy[1], // y
+      x, // x
+      y,
       vx,
       vy,
       vehicle_s,

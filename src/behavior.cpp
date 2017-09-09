@@ -152,6 +152,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
       car_y = previous_path_y.back();
       vector<double> sd = trajectory.getFrenet(car_x, car_y, 0, map_waypoints_x, map_waypoints_y);
 
+      // update sensor fusion to N-2 timestep in the future.
       int N = trajectory.num_path_;
       sensor_fusion = trajectory.getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, N - 2);
       getPossibleTrajectoriesRecursive(
@@ -288,7 +289,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
             possible_trajectory,
             sensor_fusion,
             map_waypoints_x,
-            map_waypoints_y
+            map_waypoints_y,
+            map_waypoints_s
           );
           cost += amount;
         }

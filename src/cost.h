@@ -18,8 +18,7 @@ class Cost {
     double car_y,
     std::vector<std::vector<double>> waypoints,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 
   virtual double getCost(
@@ -29,8 +28,7 @@ class Cost {
     double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   ) = 0;
 
   double weight_;
@@ -53,8 +51,7 @@ class SlowSpeedCost : public Cost {
     double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
 
@@ -70,8 +67,7 @@ class TooCloseCost : public Cost {
     double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
 
@@ -86,8 +82,7 @@ class CollideCost : public Cost {
     double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
 
@@ -102,8 +97,7 @@ class ChangeLaneCost : public Cost {
     double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<double> maps_x,
-    std::vector<double> maps_y
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
 

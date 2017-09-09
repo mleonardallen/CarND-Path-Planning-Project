@@ -19,45 +19,48 @@ double Cost::getBufferViolations(
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x,
-  vector<double> maps_y
+  vector<double> maps_y,
+  vector<double> maps_s
 ) {
 
   Trajectory trajectory;
   vector<double> violations;
 
-  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
-    double vx = sensor_fusion[sf_idx][3];
-    double vy = sensor_fusion[sf_idx][4];
-    int target_vehicle_id = sensor_fusion[sf_idx][0];
-    double target_vehicle_s = sensor_fusion[sf_idx][5];
-    double target_vehicle_d = sensor_fusion[sf_idx][6];
+  for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
 
-    double velocity = trajectory.velocityVXVY(vx, vy);
-    
-    for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
+    // s,d of current waypoint 
+    double waypoint_x = waypoints[0][w_idx];
+    double waypoint_y = waypoints[1][w_idx];
+    vector<double> car_sd = trajectory.getFrenet(waypoint_x, waypoint_y, 0, maps_x, maps_y);
+    double car_s = car_sd[0];
+    double car_d = car_sd[1];
 
-      target_vehicle_s += trajectory.distanceVT(velocity, trajectory.cycle_time_ms_);
+    for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
 
-      double waypoint_x = waypoints[0][w_idx];
-      double waypoint_y = waypoints[1][w_idx];
+      double target_vehicle_s = sensor_fusion[sf_idx][5];
+      double target_vehicle_d = sensor_fusion[sf_idx][6];
 
-      vector<double> car_sd = trajectory.getFrenet(waypoint_x, waypoint_y, 0, maps_x, maps_y);
-      double car_s = car_sd[0];
-      double car_d = car_sd[1];
+      // ignore cars on the other side of the road
+      int target_vehicle_lane = trajectory.getLaneNumber(target_vehicle_d);
+      if (!(target_vehicle_lane >= 0 && target_vehicle_lane <= 2)) {
+        continue;
+      }
 
-      if (
-        car_s <= target_vehicle_s + buffer_s
-        && car_s >= target_vehicle_s - buffer_s
-        && car_d <= target_vehicle_d + buffer_d
-        && car_d >= target_vehicle_d - buffer_d
-      ) {
-        double diff_s = car_s <= target_vehicle_s ? -buffer_s : buffer_s;
-        double diff_d = car_d <= target_vehicle_d ? -buffer_d : buffer_d;
+      double diff_s = fabs(car_s - target_vehicle_s);
+      double diff_d = fabs(car_d - target_vehicle_d);
+
+      // percent is stored so larger violations of buffer space have more weight
+      if (diff_s <= buffer_s && car_d <= buffer_d) {
+
         double percent = 0.;
-        percent += (car_s + buffer_s) / (target_vehicle_s + buffer_s);
-        percent += (car_d + buffer_d) / (target_vehicle_d + buffer_d);
+        percent += (buffer_s - diff_s) / buffer_s;
+        percent += (buffer_d - diff_d) / buffer_d;
+
         violations.push_back(percent);
       }
+
+      // update sensor fusion to 1 timestep in the future.
+      sensor_fusion = trajectory.getFutureSensorFusion(maps_x, maps_y, maps_s, sensor_fusion, 1);
     }
   }
 
@@ -65,7 +68,7 @@ double Cost::getBufferViolations(
 }
 
 CollideCost::CollideCost() {
-  weight_ = 1000.;
+  weight_ = 100.;
 }
 double CollideCost::getCost(
   shared_ptr<State> fromState,
@@ -74,10 +77,10 @@ double CollideCost::getCost(
   double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
-  vector<double> maps_x, vector<double> maps_y
+  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
-  double buffer_s = 1.2;
+  double buffer_s = 1.5;
   double buffer_d = 0.5;
 
   double amount = getBufferViolations(
@@ -88,7 +91,8 @@ double CollideCost::getCost(
     waypoints,
     sensor_fusion,
     maps_x,
-    maps_y
+    maps_y,
+    maps_s
   ) > 0. ? 1. : 0.;
 
   return amount * weight_;
@@ -104,8 +108,7 @@ double TooCloseCost::getCost(
   double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
-  vector<double> maps_x,
-  vector<double> maps_y
+  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
   double buffer_s = 1.0;
@@ -119,7 +122,8 @@ double TooCloseCost::getCost(
     waypoints,
     sensor_fusion,
     maps_x,
-    maps_y
+    maps_y,
+    maps_s
   );
 
   return amount * weight_;
@@ -135,8 +139,7 @@ double SlowSpeedCost::getCost(
   double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
-  vector<double> maps_x,
-  vector<double> maps_y
+  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   Trajectory trajectory;
 
@@ -149,7 +152,7 @@ double SlowSpeedCost::getCost(
 }
 
 ChangeLaneCost::ChangeLaneCost() {
-  weight_ = 1.;
+  weight_ = 0.1;
 }
 double ChangeLaneCost::getCost(
   shared_ptr<State> fromState,
@@ -158,8 +161,7 @@ double ChangeLaneCost::getCost(
   double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
-  vector<double> maps_x,
-  vector<double> maps_y
+  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   double amount = 0.;
   if (
