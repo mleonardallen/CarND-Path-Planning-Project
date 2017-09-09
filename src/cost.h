@@ -14,18 +14,13 @@ class Cost {
   double getBufferViolations(
     double buffer_s,
     double buffer_d,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> waypoints,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 
   virtual double getCost(
-    std::shared_ptr<State> fromState,
     std::shared_ptr<State> toState,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
@@ -45,10 +40,7 @@ class SlowSpeedCost : public Cost {
   SlowSpeedCost();
 
   double getCost(
-    std::shared_ptr<State> fromState,
     std::shared_ptr<State> toState,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
@@ -61,10 +53,7 @@ class TooCloseCost : public Cost {
   TooCloseCost();
 
   double getCost(
-    std::shared_ptr<State> fromState,
     std::shared_ptr<State> toState,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
@@ -76,10 +65,7 @@ class CollideCost : public Cost {
   CollideCost();
 
   double getCost(
-    std::shared_ptr<State> fromState,
     std::shared_ptr<State> toState,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
@@ -91,10 +77,7 @@ class ChangeLaneCost : public Cost {
   ChangeLaneCost();
 
   double getCost(
-    std::shared_ptr<State> fromState,
     std::shared_ptr<State> toState,
-    double car_x,
-    double car_y,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s

@@ -14,8 +14,6 @@ Cost::~Cost() {}
 double Cost::getBufferViolations(
   double buffer_s,
   double buffer_d,
-  double car_x,
-  double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x,
@@ -50,7 +48,7 @@ double Cost::getBufferViolations(
       double diff_d = fabs(car_d - target_vehicle_d);
 
       // percent is stored so larger violations of buffer space have more weight
-      if (diff_s <= buffer_s && car_d <= buffer_d) {
+      if (diff_s <= buffer_s && diff_d <= buffer_d) {
 
         double percent = 0.;
         percent += (buffer_s - diff_s) / buffer_s;
@@ -71,23 +69,18 @@ CollideCost::CollideCost() {
   weight_ = 100.;
 }
 double CollideCost::getCost(
-  shared_ptr<State> fromState,
   shared_ptr<State> toState,
-  double car_x,
-  double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
   double buffer_s = 1.5;
-  double buffer_d = 0.5;
+  double buffer_d = 0.4;
 
   double amount = getBufferViolations(
     buffer_s,
     buffer_d,
-    car_x,
-    car_y,
     waypoints,
     sensor_fusion,
     maps_x,
@@ -102,10 +95,7 @@ TooCloseCost::TooCloseCost() {
   weight_ = 1.;
 }
 double TooCloseCost::getCost(
-  shared_ptr<State> fromState,
   shared_ptr<State> toState,
-  double car_x,
-  double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
@@ -117,8 +107,6 @@ double TooCloseCost::getCost(
   double amount = getBufferViolations(
     buffer_s,
     buffer_d,
-    car_x,
-    car_y,
     waypoints,
     sensor_fusion,
     maps_x,
@@ -133,10 +121,7 @@ SlowSpeedCost::SlowSpeedCost() {
   weight_ = 10.;
 }
 double SlowSpeedCost::getCost(
-  shared_ptr<State> fromState,
   shared_ptr<State> toState,
-  double car_x,
-  double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
@@ -155,10 +140,7 @@ ChangeLaneCost::ChangeLaneCost() {
   weight_ = 0.1;
 }
 double ChangeLaneCost::getCost(
-  shared_ptr<State> fromState,
   shared_ptr<State> toState,
-  double car_x,
-  double car_y,
   std::vector<std::vector<double>> waypoints,
   std::vector<std::vector<double>> sensor_fusion,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s

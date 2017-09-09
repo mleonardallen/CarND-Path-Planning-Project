@@ -282,10 +282,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
         double cost = 0.;
         for (int c_idx = 0; c_idx < costs.size(); c_idx++) {
           double amount = costs[c_idx]->getCost(
-            fromState,
             toState,
-            car_x,
-            car_y,
             possible_trajectory,
             sensor_fusion,
             map_waypoints_x,
