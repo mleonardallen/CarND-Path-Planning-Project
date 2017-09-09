@@ -70,6 +70,13 @@ class CollideCost : public Cost {
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
+
+  bool isCollision(
+    double buffer_s, double buffer_d,
+    std::vector<std::vector<double>> trajectory,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
+  );
 };
 
 class ChangeLaneCost : public Cost {
