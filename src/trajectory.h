@@ -64,12 +64,11 @@ class Trajectory {
 
   double velocityVXVY(double vx, double vy);
   double velocityWaypoints(std::vector<std::vector<double>> waypoints);
-  double velocityDT(double distance, double t);
+  double velocityX1Y1X2Y2(double x1, double y1, double x2, double y2);
   double velocityVAT(double v, double acceleration, double t);
 
   double distanceX1Y1X2Y2(double x1, double y1, double x2, double y2);
   double distanceS1S2(double s1, double s2);
-  double distanceVT(double velocity, double t);
   double distanceVAT(double velocity, double acceleration, double t);
 
   std::vector<double> getGlobalSpace(double x, double y, double ref_x, double ref_y, double ref_yaw);
@@ -85,9 +84,9 @@ class Trajectory {
   std::vector<double> getXY(
     double s,
     double d,
-    std::vector<double> map_waypoints_s,
     std::vector<double> map_waypoints_x,
-    std::vector<double> map_waypoints_y
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
 
   std::vector<double> getFrenet(
@@ -99,7 +98,7 @@ class Trajectory {
   );
 
   double getMaxVelocity();
-  double getMaxVelocity(
+  double getSafeVelocity(
     double car_s,
     double car_d,
     std::shared_ptr<State> toState,

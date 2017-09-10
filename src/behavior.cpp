@@ -54,7 +54,7 @@ void PossibleTrajectory::print(
   cout << "\tTarget Lane " << state_->target_lane_;
   cout << "\tCost: " << total_cost_;
   cout << "\tAvg V: " << trajectory.getAverageVelocity(trajectory_);
-  cout << "\tMax V: " << trajectory.getMaxVelocity(car_s_, car_d_, state_, sensor_fusion_);
+  cout << "\tMax V: " << trajectory.getSafeVelocity(car_s_, car_d_, state_, sensor_fusion_);
 
   int id = trajectory.getClosestVehicleId(car_d_, car_s_, sensor_fusion_);
   cout << "\tClosest Vehicle: " << id;

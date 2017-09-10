@@ -97,7 +97,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
       car_s + distances[i], target_d,
-      map_waypoints_s, map_waypoints_x, map_waypoints_y
+      map_waypoints_x, map_waypoints_y, map_waypoints_s
     );
     ptsx.push_back(xy[0]);
     ptsy.push_back(xy[1]);
@@ -128,8 +128,8 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
 
-    double max_vel = getMaxVelocity(car_s, car_d, toState, sensor_fusion);
-    double acceleration = (ref_vel < max_vel) ? acceleration_ : -acceleration_;
+    double safe_vel = getSafeVelocity(car_s, car_d, toState, sensor_fusion);
+    double acceleration = (ref_vel < safe_vel) ? acceleration_ : -acceleration_;
     double x_point = x_add_on + distanceVAT(ref_vel, acceleration, cycle_time_ms_);
     double y_point = spline(x_point);
 
@@ -142,7 +142,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
     // rotate back to normal after rotating earlier
     vector<double> xy = getGlobalSpace(x_point, y_point, ref_x, ref_y, ref_yaw);
 
-    // update s,d for when we recalculate max velocity
+    // update s,d for when we recalculate safe velocity
     vector<double> sd = getFrenet(xy[0], xy[1], 0, map_waypoints_x, map_waypoints_y);
     car_s = sd[0];
     car_d = sd[1];
@@ -152,25 +152,6 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   }
 
   return {x_vals, y_vals};
-}
-
-double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicle) {
-
-  double target_vehicle_vx = target_vehicle[3];
-  double target_vehicle_vy = target_vehicle[4];
-  double target_vehicle_s = target_vehicle[5];
-  double target_vehicle_d = target_vehicle[6];
-  double target_vehicle_speed = velocityVXVY(target_vehicle_vx, target_vehicle_vy);
-
-  // ramp down velocity slowly if approaching car
-  double diff_s = distanceS1S2(car_s, target_vehicle_s);
-  if (diff_s < safe_leading_s_) {
-    double percent_ref = (safe_leading_s_ - diff_s) / safe_leading_s_;
-    double diff_max = max_vel_ - target_vehicle_speed;
-    return max_vel_ - diff_max * percent_ref;
-  }
-
-  return max_vel_;
 }
 
 // 
@@ -219,9 +200,8 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
   for (int idx = 1; idx < waypoints[0].size(); idx++) {
     double x2 = waypoints[0][idx];
     double y2 = waypoints[1][idx];
-    double dist = distanceX1Y1X2Y2(x1, y1, x2, y2);
-    double speed = velocityDT(dist, cycle_time_ms_);
-    speeds.push_back(speed);
+    double vel = velocityX1Y1X2Y2(x1, y1, x2, y2);
+    speeds.push_back(vel);
 
     x1 = x2;
     y1 = y2;
@@ -231,43 +211,30 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
   return average;
 }
 
-// For converting back and forth between radians and degrees.
-double Trajectory::pi() { return M_PI; }
-double Trajectory::deg2rad(double x) { return x * pi() / 180; }
-double Trajectory::rad2deg(double x) { return x * 180 / pi(); }
 
-double Trajectory::velocityVXVY(double vx, double vy) {return sqrt(vx * vx + vy * vy);}
-double Trajectory::velocityDT(double distance, double t) {return distance / t;}
-double Trajectory::velocityVAT(double v, double acceleration, double t) {return v + acceleration * t;}
-double Trajectory::velocityWaypoints(vector<vector<double>> waypoints) {
+double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicle) {
 
-  if (waypoints[0].size() < 2) {
-    return 0.01;
+  double target_vehicle_vx = target_vehicle[3];
+  double target_vehicle_vy = target_vehicle[4];
+  double target_vehicle_s = target_vehicle[5];
+  double target_vehicle_d = target_vehicle[6];
+  double target_vehicle_speed = velocityVXVY(target_vehicle_vx, target_vehicle_vy);
+
+  // ramp down velocity slowly if approaching car
+  double diff_s = distanceS1S2(car_s, target_vehicle_s);
+  if (diff_s < safe_leading_s_) {
+    double percent_ref = (safe_leading_s_ - diff_s) / safe_leading_s_;
+    double diff_max = max_vel_ - target_vehicle_speed;
+    return max_vel_ - diff_max * percent_ref;
   }
 
-  double x1 = waypoints[0][waypoints[0].size() - 2];
-  double y1 = waypoints[1][waypoints[1].size() - 2];
-  double x2 = waypoints[0][waypoints[0].size() - 1];
-  double y2 = waypoints[1][waypoints[1].size() - 1];
-
-  double dist = distanceX1Y1X2Y2(x1, y1, x2, y2);
-  return velocityDT(dist, cycle_time_ms_);
+  return max_vel_;
 }
 
-// s = vt + (1/2) at^2
-double Trajectory::distanceVAT(double velocity, double acceleration, double t) {return velocity * t + (1/2) * acceleration * t * t;}
-double Trajectory::distanceVT(double velocity, double t) {return velocity * t;}
-double Trajectory::distanceX1Y1X2Y2(double x1, double y1, double x2, double y2) {return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));}
-double Trajectory::distanceS1S2(double s1, double s2) {
-  double largest_s = s1 > s2 ? s1 : s2;
-  double shifted_s1 = s1 - largest_s + max_s_;
-  double shifted_s2 = s2 - largest_s + max_s_;
-  return shifted_s2 - shifted_s1;
-}
-int Trajectory::getLaneNumber(double d) {return (int) floor(d/lane_size_);}
-double Trajectory::getMaxVelocity() {return max_vel_;}
-
-double Trajectory::getMaxVelocity(
+/**
+ *
+ */
+double Trajectory::getSafeVelocity(
   double car_s,
   double car_d,
   shared_ptr<State> toState,
@@ -293,47 +260,145 @@ double Trajectory::getMaxVelocity(
   return max_vel;
 }
 
+/**
+ * 
+ */
+double Trajectory::getMaxVelocity() {return max_vel_;}
+
+// For converting back and forth between radians and degrees.
+double Trajectory::pi() { return M_PI; }
+double Trajectory::deg2rad(double x) { return x * pi() / 180; }
+double Trajectory::rad2deg(double x) { return x * 180 / pi(); }
+
+/**
+ * @desc velocity given two points
+ * @param {double} x1
+ * @param {double} y1
+ * @param {double} x2
+ * @param {double} y2
+ * @return {double} velocity
+ */
+double Trajectory::velocityX1Y1X2Y2(double x1, double y1, double x2, double y2) {
+  return distanceX1Y1X2Y2(x1, y1, x2, y2) /  cycle_time_ms_;
+}
+
+/*
+ * @desc velocity given x/y components
+ * @param {double} vx
+ * @param {double} vy
+ * @return {double} velocity
+ */
+double Trajectory::velocityVXVY(double vx, double vy) {
+  return sqrt(vx * vx + vy * vy);
+}
+
+/**
+ * @desc velocity given initial velocity, acceleration, and time
+ * @param {double} initial velocity
+ * @param {double} acceleration
+ * @param {double} elapsed time
+ * @return {double} velocity
+ */
+double Trajectory::velocityVAT(double v, double acceleration, double t) {
+  return v + acceleration * t;
+}
+
+/**
+ * @desc calculate average velocity given a set of waypoints
+ * @param {vector<vector<double>>} waypoints
+ * @return {double} average velocity
+ */
+double Trajectory::velocityWaypoints(vector<vector<double>> waypoints) {
+
+  if (waypoints[0].size() < 2) {
+    return 0.01;
+  }
+
+  double x1 = waypoints[0][waypoints[0].size() - 2];
+  double y1 = waypoints[1][waypoints[1].size() - 2];
+  double x2 = waypoints[0][waypoints[0].size() - 1];
+  double y2 = waypoints[1][waypoints[1].size() - 1];
+
+  return velocityX1Y1X2Y2(x1, y1, x2, y2);
+}
+
+/**
+ * @desc distance travelled given initial velocity, acceleration, and elapsed time.
+ * @param {double} initial velocity
+ * @param {double} acceleration
+ * @param {double} elapsed time
+ * @return {double} distance
+ */
+double Trajectory::distanceVAT(double velocity, double acceleration, double t) {
+  return velocity * t + (1/2) * acceleration * t * t;
+}
+
+/**
+ * @desc distance between two points
+ * @param {double} x1
+ * @param {double} y1
+ * @param {double} x2
+ * @param {double} y2
+ * @return {double} distance
+ */
+double Trajectory::distanceX1Y1X2Y2(double x1, double y1, double x2, double y2) {
+  return sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1));
+}
+
+/**
+ * @desc distance between two s values
+ * @param {double} s1
+ * @param {double} s2
+ * @return {double} distance
+ */
+double Trajectory::distanceS1S2(double s1, double s2) {
+  double largest_s = s1 > s2 ? s1 : s2;
+  double shifted_s1 = s1 - largest_s + max_s_;
+  double shifted_s2 = s2 - largest_s + max_s_;
+  return shifted_s2 - shifted_s1;
+}
+
+/**
+ * @desc get lane number given d value
+ * @param {double} d
+ * @return {int} lane number
+ */
+int Trajectory::getLaneNumber(double d) {return (int) floor(d/lane_size_);}
+
 vector<vector<double>> Trajectory::getFutureSensorFusion(
-  vector<double> maps_x,
-  vector<double> maps_y,
-  vector<double> maps_s,
+  vector<double> map_waypoints_x,
+  vector<double> map_waypoints_y,
+  vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
   int N
 ) {
   Trajectory trajectory;
   vector<vector<double>> new_sensor_fusion;
 
-  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
+  for (int i = 0; i < sensor_fusion.size(); i++) {
 
     // calculate velocity (assume car is going in s direction)
-    double x = sensor_fusion[sf_idx][1];
-    double y = sensor_fusion[sf_idx][2];
-    double vx = sensor_fusion[sf_idx][3];
-    double vy = sensor_fusion[sf_idx][4];
-    double vehicle_s = sensor_fusion[sf_idx][5];
-    double vehicle_d = sensor_fusion[sf_idx][6];
+    double id = sensor_fusion[i][0];
+    double x = sensor_fusion[i][1];
+    double y = sensor_fusion[i][2];
+    double vx = sensor_fusion[i][3];
+    double vy = sensor_fusion[i][4];
+    double s = sensor_fusion[i][5];
+    double d = sensor_fusion[i][6];
 
-    int lane = getLaneNumber(vehicle_d);
+    int lane = getLaneNumber(d);
     if (lane >= 0 && lane <= 2) {
       // get future vehicle_s
       double velocity = velocityVXVY(vx, vy);
-      vehicle_s += distanceVT(velocity, cycle_time_ms_) * N;
+      s += velocity * cycle_time_ms_ * N;
 
       // get future x,y using s,d
-      vector<double> xy = getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
+      vector<double> xy = getXY(s, d, map_waypoints_x, map_waypoints_y, map_waypoints_s);
       x = xy[0];
       y = xy[1];
     }
 
-    new_sensor_fusion.push_back({
-      sensor_fusion[sf_idx][0], // id
-      x, // x
-      y,
-      vx,
-      vy,
-      vehicle_s,
-      vehicle_d
-    });
+    new_sensor_fusion.push_back({id, x, y, vx, vy, s, d});
   }
 
   return new_sensor_fusion;
@@ -356,7 +421,7 @@ vector<double> Trajectory::getGlobalSpace(double x, double y, double ref_x, doub
 }
 
 // Transform from Frenet s,d coordinates to Cartesian x,y
-vector<double> Trajectory::getXY(double s, double  d, vector<double> maps_s, vector<double> maps_x, vector<double> maps_y)
+vector<double> Trajectory::getXY(double s, double  d, vector<double> maps_x, vector<double> maps_y, vector<double> maps_s)
 {
   int prev_wp = -1;
 
