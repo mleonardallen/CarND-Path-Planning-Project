@@ -11,6 +11,7 @@
 #include "trajectory.h"
 #include "behavior.h"
 #include "state.h"
+#include "prediction.h"
 
 using namespace std;
 
@@ -45,13 +46,17 @@ int main() {
   vector<thread> threads;
   Trajectory trajectory;
   BehaviorPlanner planner;
+  Predictor predictor;
+
   shared_ptr<State> state = StateFactory::create(
     State::StateId::LANE_KEEP,
     -1, // target vehicle
     1, // target lane
     1 // target lane
   );
+
   vector<shared_ptr<State>> states;
+  vector<vector<vector<double>>> sensor_fusion_history;
 
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
@@ -83,7 +88,7 @@ int main() {
   bool thread_is_done = false;
   h.onMessage([
     &map_waypoints_x, &map_waypoints_y, &map_waypoints_s, &map_waypoints_dx, &map_waypoints_dy,
-    &trajectory, &planner, &threads, &states, &state, &thread_is_done
+    &trajectory, &planner, &threads, &states, &state, &predictor, &sensor_fusion_history, &thread_is_done
   ](
     uWS::WebSocket<uWS::SERVER> ws,
     char *data, size_t length,
@@ -125,6 +130,8 @@ int main() {
           vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
           json msgJson;
 
+          sensor_fusion_history = predictor.updateHistory(sensor_fusion_history, sensor_fusion);
+
           // TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
           // if planner is not currently working, start a new thread
           if (!threads.size() && !states.size())
@@ -138,6 +145,7 @@ int main() {
               previous_path_x, previous_path_y,
               map_waypoints_x, map_waypoints_y, map_waypoints_s,
               sensor_fusion,
+              sensor_fusion_history,
               std::ref(states),
               std::ref(state),
               std::ref(thread_is_done)
@@ -167,6 +175,7 @@ int main() {
           vector<vector<double>> waypoints = trajectory.getTrajectory(
             state,
             sensor_fusion,
+            sensor_fusion_history,
             car_x, car_y, car_s, car_d, car_yaw,
             previous_path_x, previous_path_y,
             map_waypoints_x, map_waypoints_y, map_waypoints_s

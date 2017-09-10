@@ -16,6 +16,7 @@ class Cost {
     double buffer_d,
     std::vector<std::vector<double>> waypoints,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 
@@ -23,6 +24,7 @@ class Cost {
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   ) = 0;
 
@@ -43,6 +45,7 @@ class SlowSpeedCost : public Cost {
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
@@ -56,6 +59,7 @@ class TooCloseCost : public Cost {
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
@@ -68,13 +72,15 @@ class CollideCost : public Cost {
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 
   bool isCollision(
-    double buffer_s, double buffer_d,
+    double buffer_s9, double buffer_d,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };
@@ -87,6 +93,7 @@ class ChangeLaneCost : public Cost {
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
   );
 };

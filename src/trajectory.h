@@ -14,6 +14,7 @@ class Trajectory {
   std::vector<std::vector<double>> getTrajectory(
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
@@ -31,14 +32,6 @@ class Trajectory {
   int getLaneNumber(double d);
 
   int getClosestVehicleId(double car_d, double car_s, std::vector<std::vector<double>> sensor_fusion);
-
-  std::vector<std::vector<double>> getFutureSensorFusion(
-    std::vector<double> maps_x,
-    std::vector<double> maps_y,
-    std::vector<double> maps_s,
-    std::vector<std::vector<double>> sensor_fusion,
-    int N
-  );
 
   double pi();
 

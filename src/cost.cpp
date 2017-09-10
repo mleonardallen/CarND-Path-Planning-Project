@@ -4,6 +4,7 @@
 #include "cost.h"
 #include "math.h"
 #include "trajectory.h"
+#include "prediction.h"
 #include "state.h"
 
 using namespace std;
@@ -16,12 +17,14 @@ double Cost::getBufferViolations(
   double buffer_d,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x,
   vector<double> maps_y,
   vector<double> maps_s
 ) {
 
   Trajectory trajectory;
+  Predictor predictor;
   vector<double> violations;
 
   for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
@@ -59,7 +62,10 @@ double Cost::getBufferViolations(
     }
 
     // update sensor fusion to 1 timestep in the future.
-    sensor_fusion = trajectory.getFutureSensorFusion(maps_x, maps_y, maps_s, sensor_fusion, 1);
+    sensor_fusion = predictor.getFutureSensorFusion(
+      maps_x, maps_y, maps_s,
+      sensor_fusion, sensor_fusion_history, 1
+    );
   }
 
   return accumulate(violations.begin(), violations.end(), 0.0);
@@ -72,6 +78,7 @@ double CollideCost::getCost(
   shared_ptr<State> toState,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
@@ -80,7 +87,7 @@ double CollideCost::getCost(
 
   return isCollision(
     buffer_s, buffer_d,
-    waypoints, sensor_fusion,
+    waypoints, sensor_fusion, sensor_fusion_history,
     maps_x, maps_y, maps_s
   ) ? weight_ : 0;
 }
@@ -89,6 +96,7 @@ bool CollideCost::isCollision(
   double buffer_s, double buffer_d,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   return getBufferViolations(
@@ -96,6 +104,7 @@ bool CollideCost::isCollision(
     buffer_d,
     waypoints,
     sensor_fusion,
+    sensor_fusion_history,
     maps_x, maps_y, maps_s
   ) > 0;
 }
@@ -107,6 +116,7 @@ double TooCloseCost::getCost(
   shared_ptr<State> toState,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
@@ -118,6 +128,7 @@ double TooCloseCost::getCost(
     buffer_d,
     waypoints,
     sensor_fusion,
+    sensor_fusion_history,
     maps_x,
     maps_y,
     maps_s
@@ -133,6 +144,7 @@ double SlowSpeedCost::getCost(
   shared_ptr<State> toState,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   Trajectory trajectory;
@@ -152,6 +164,7 @@ double ChangeLaneCost::getCost(
   shared_ptr<State> toState,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   double amount = 0.;

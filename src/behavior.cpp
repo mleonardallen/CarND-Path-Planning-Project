@@ -3,6 +3,7 @@
 #include <iomanip>
 #include "behavior.h"
 #include "trajectory.h"
+#include "prediction.h"
 #include "state.h"
 #include "cost.h"
 
@@ -89,6 +90,7 @@ void BehaviorPlanner::transition(
   vector<double> map_waypoints_y,
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   vector<shared_ptr<State>> &states,
   shared_ptr<State> &state,
   bool &thread_is_done
@@ -98,6 +100,7 @@ void BehaviorPlanner::transition(
     car_x, car_y, car_s, car_d, car_yaw,
     previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s,
     sensor_fusion,
+    sensor_fusion_history,
     state,
     nullptr,
     3 // depth
@@ -128,16 +131,19 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
   vector<double> map_waypoints_y,
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   shared_ptr<State> state,
   shared_ptr<PossibleTrajectory> prev,
   int depth
 ) {
 
   Trajectory trajectory;
+  Predictor predictor;
   vector<shared_ptr<PossibleTrajectory>> possible_trajectories = BehaviorPlanner::getPossibleTrajectories(
     car_x, car_y, car_s, car_d, car_yaw,
     previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s,
     sensor_fusion,
+    sensor_fusion_history,
     state,
     prev
   );
@@ -154,7 +160,10 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
 
       // update sensor fusion to N-2 timestep in the future.
       int N = trajectory.num_path_;
-      sensor_fusion = trajectory.getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, N - 2);
+      sensor_fusion = predictor.getFutureSensorFusion(
+        map_waypoints_x, map_waypoints_y, map_waypoints_s, 
+        sensor_fusion, sensor_fusion_history, N - 2
+      );
       getPossibleTrajectoriesRecursive(
         car_x, car_y, sd[0], sd[1], car_yaw,
         // previous path contains a couple points so we can get velocity
@@ -162,6 +171,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
         {previous_path_y[N - 2], previous_path_y[N - 1]},
         map_waypoints_x, map_waypoints_y, map_waypoints_s,
         sensor_fusion,
+        sensor_fusion_history,
         possible_trajectories[i]->state_,
         possible_trajectories[i], // this pointer is modified to link to lowest cost next trajectory
         depth
@@ -197,6 +207,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
   vector<double> map_waypoints_y,
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   shared_ptr<State> fromState,
   shared_ptr<PossibleTrajectory> prev_possible_trajectory
 ) {
@@ -274,6 +285,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
         vector<vector<double>> possible_trajectory = trajectory.getTrajectory(
           toState,
           sensor_fusion,
+          sensor_fusion_history,
           car_x, car_y, car_s, car_d, car_yaw,
           previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s
         );
@@ -285,6 +297,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
             toState,
             possible_trajectory,
             sensor_fusion,
+            sensor_fusion_history,
             map_waypoints_x,
             map_waypoints_y,
             map_waypoints_s

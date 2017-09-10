@@ -67,6 +67,7 @@ class BehaviorPlanner {
     std::vector<double> map_waypoints_y,
     std::vector<double> map_waypoints_s,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::vector<std::shared_ptr<State>> &states,
     std::shared_ptr<State> &state,
     bool &thread_is_done
@@ -84,6 +85,7 @@ class BehaviorPlanner {
     std::vector<double> map_waypoints_y,
     std::vector<double> map_waypoints_s,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::shared_ptr<State> state,
     std::shared_ptr<PossibleTrajectory> prev,
     int depth
@@ -101,6 +103,7 @@ class BehaviorPlanner {
     std::vector<double> map_waypoints_y,
     std::vector<double> map_waypoints_s,
     std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     std::shared_ptr<State> state,
     std::shared_ptr<PossibleTrajectory> prev
   );

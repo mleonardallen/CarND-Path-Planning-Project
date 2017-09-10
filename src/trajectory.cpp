@@ -3,6 +3,7 @@
 #include <numeric>
 #include "trajectory.h"
 #include "behavior.h"
+#include "prediction.h"
 #include "spline.h"
 
 using namespace std;
@@ -13,6 +14,7 @@ Trajectory::~Trajectory() {}
 vector<vector<double>> Trajectory::getTrajectory(
   shared_ptr<State> toState,
   vector<vector<double>> sensor_fusion,
+  vector<vector<vector<double>>> sensor_fusion_history,
   double car_x,
   double car_y,
   double car_s,
@@ -86,6 +88,7 @@ vector<vector<double>> Trajectory::getTrajectory(
 
   // create the spline
   tk::spline spline;
+  Predictor predictor;
   spline.set_points(ptsx, ptsy);
 
   double target_x = safe_leading_s_;
@@ -113,7 +116,10 @@ vector<vector<double>> Trajectory::getTrajectory(
     ref_vel = velocityVAT(ref_vel, acceleration, cycle_time_ms_);
 
     // update sensor fusion to 1 timestep in the future.
-    sensor_fusion = getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, 1);
+    sensor_fusion = predictor.getFutureSensorFusion(
+      map_waypoints_x, map_waypoints_y, map_waypoints_s, 
+      sensor_fusion, sensor_fusion_history, 1
+    );
 
     // update s,d for when we recalculate safe velocity
     vector<double> sd = getFrenet(xy[0], xy[1], ref_yaw, map_waypoints_x, map_waypoints_y);
@@ -334,45 +340,6 @@ double Trajectory::distanceS1S2(double s1, double s2) {
  * @return {int} lane number
  */
 int Trajectory::getLaneNumber(double d) {return (int) floor(d/lane_size_);}
-
-vector<vector<double>> Trajectory::getFutureSensorFusion(
-  vector<double> map_waypoints_x,
-  vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s,
-  vector<vector<double>> sensor_fusion,
-  int N
-) {
-  Trajectory trajectory;
-  vector<vector<double>> new_sensor_fusion;
-
-  for (int i = 0; i < sensor_fusion.size(); i++) {
-
-    // calculate velocity (assume car is going in s direction)
-    double id = sensor_fusion[i][0];
-    double x = sensor_fusion[i][1];
-    double y = sensor_fusion[i][2];
-    double vx = sensor_fusion[i][3];
-    double vy = sensor_fusion[i][4];
-    double s = sensor_fusion[i][5];
-    double d = sensor_fusion[i][6];
-
-    int lane = getLaneNumber(d);
-    if (lane >= 0 && lane <= 2) {
-      // get future vehicle_s
-      double velocity = velocityVXVY(vx, vy);
-      s += velocity * cycle_time_ms_ * N;
-
-      // get future x,y using s,d
-      vector<double> xy = getXY(s, d, map_waypoints_x, map_waypoints_y, map_waypoints_s);
-      x = xy[0];
-      y = xy[1];
-    }
-
-    new_sensor_fusion.push_back({id, x, y, vx, vy, s, d});
-  }
-
-  return new_sensor_fusion;
-}
 
 vector<double> Trajectory::getLocalSpace(double x, double y, double ref_x, double ref_y, double ref_yaw) {
   double shift_x = x - ref_x;
