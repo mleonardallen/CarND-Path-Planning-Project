@@ -56,10 +56,10 @@ double Cost::getBufferViolations(
 
         violations.push_back(percent);
       }
-
-      // update sensor fusion to 1 timestep in the future.
-      sensor_fusion = trajectory.getFutureSensorFusion(maps_x, maps_y, maps_s, sensor_fusion, 1);
     }
+
+    // update sensor fusion to 1 timestep in the future.
+    sensor_fusion = trajectory.getFutureSensorFusion(maps_x, maps_y, maps_s, sensor_fusion, 1);
   }
 
   return accumulate(violations.begin(), violations.end(), 0.0);

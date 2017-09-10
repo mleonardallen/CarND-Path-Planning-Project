@@ -317,8 +317,7 @@ vector<vector<double>> Trajectory::getFutureSensorFusion(
     if (lane >= 0 && lane <= 2) {
       // get future vehicle_s
       double velocity = velocityVXVY(vx, vy);
-      double distance = distanceVT(velocity, cycle_time_ms_) * N;
-      vehicle_s = vehicle_s + distance;
+      vehicle_s += distanceVT(velocity, cycle_time_ms_) * N;
 
       // get future x,y using s,d
       vector<double> xy = getXY(vehicle_s, vehicle_d, maps_s, maps_x, maps_y);
