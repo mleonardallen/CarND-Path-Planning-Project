@@ -11,21 +11,6 @@ class Trajectory {
 
   virtual ~Trajectory();
 
-  std::vector<std::vector<double>> getFutureTrajectory(
-    std::shared_ptr<State> toState,
-    std::vector<std::vector<double>> sensor_fusion,
-    double car_x,
-    double car_y,
-    double car_s,
-    double car_d,
-    double car_yaw,
-    std::vector<double> previous_path_x,
-    std::vector<double> previous_path_y,
-    std::vector<double> map_waypoints_x,
-    std::vector<double> map_waypoints_y,
-    std::vector<double> map_waypoints_s
-  );
-
   std::vector<std::vector<double>> getTrajectory(
     std::shared_ptr<State> toState,
     std::vector<std::vector<double>> sensor_fusion,
@@ -47,8 +32,6 @@ class Trajectory {
 
   int getClosestVehicleId(double car_d, double car_s, std::vector<std::vector<double>> sensor_fusion);
 
-  double getAverageVelocity(std::vector<std::vector<double>> waypoints);
-
   std::vector<std::vector<double>> getFutureSensorFusion(
     std::vector<double> maps_x,
     std::vector<double> maps_y,
@@ -63,9 +46,10 @@ class Trajectory {
   double rad2deg(double x);
 
   double velocityVXVY(double vx, double vy);
-  double velocityWaypoints(std::vector<std::vector<double>> waypoints);
   double velocityX1Y1X2Y2(double x1, double y1, double x2, double y2);
   double velocityVAT(double v, double acceleration, double t);
+  double velocityPreviousPath(std::vector<std::vector<double>> waypoints);
+  double getAverageVelocity(std::vector<std::vector<double>> waypoints);
 
   double distanceX1Y1X2Y2(double x1, double y1, double x2, double y2);
   double distanceS1S2(double s1, double s2);

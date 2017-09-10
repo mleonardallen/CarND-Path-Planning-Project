@@ -34,32 +34,6 @@ vector<vector<double>> Trajectory::getTrajectory(
   next_y_vals.insert(next_y_vals.end(), previous_path_y.begin(), previous_path_y.end());
 
   // generate new trajectory points
-  vector<vector<double>> future = getFutureTrajectory(
-    toState,
-    sensor_fusion,
-    car_x, car_y, car_s, car_d, car_yaw,
-    previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s
-  );
-  next_x_vals.insert(next_x_vals.end(), future[0].begin(), future[0].end());
-  next_y_vals.insert(next_y_vals.end(), future[1].begin(), future[1].end());
-
-  return {next_x_vals, next_y_vals};
-}
-
-vector<vector<double>> Trajectory::getFutureTrajectory(
-  shared_ptr<State> toState,
-  vector<vector<double>> sensor_fusion,
-  double car_x,
-  double car_y,
-  double car_s,
-  double car_d,
-  double car_yaw,
-  vector<double> previous_path_x,
-  vector<double> previous_path_y,
-  vector<double> map_waypoints_x,
-  vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s
-) {
   std::vector<double> ptsx;
   std::vector<double> ptsy;
 
@@ -103,7 +77,7 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
     ptsy.push_back(xy[1]);
   }
 
-  // convert points to local space
+  // convert points to local space so spline calculation is more efficient
   for (int i = 0; i < ptsx.size(); i++) {
     vector<double> xy = getLocalSpace(ptsx[i], ptsy[i], ref_x, ref_y, ref_yaw);
     ptsx[i] = xy[0];
@@ -114,44 +88,40 @@ vector<vector<double>> Trajectory::getFutureTrajectory(
   tk::spline spline;
   spline.set_points(ptsx, ptsy);
 
-  // convert spline to points
-  vector<double> x_vals;
-  vector<double> y_vals;
-
-  double target_x = num_path_;
+  double target_x = safe_leading_s_;
   double target_y = spline(target_x);
   double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
   // get the previous path velocity
-  double x_add_on = 0;
-  double ref_vel = velocityWaypoints({previous_path_x, previous_path_y});
+  double x_point = 0;
+  double ref_vel = velocityPreviousPath({previous_path_x, previous_path_y});
 
   for (int i = 1; i <= num_path_ - prev_size; i++) {
 
     double safe_vel = getSafeVelocity(car_s, car_d, toState, sensor_fusion);
     double acceleration = (ref_vel < safe_vel) ? acceleration_ : -acceleration_;
-    double x_point = x_add_on + distanceVAT(ref_vel, acceleration, cycle_time_ms_);
+    
+    x_point += distanceVAT(ref_vel, acceleration, cycle_time_ms_);
     double y_point = spline(x_point);
 
-    x_add_on = x_point;
+    // convert back to global space
+    vector<double> xy = getGlobalSpace(x_point, y_point, ref_x, ref_y, ref_yaw);
+    next_x_vals.push_back(xy[0]);
+    next_y_vals.push_back(xy[1]);
+
+    // update reference velocity
     ref_vel = velocityVAT(ref_vel, acceleration, cycle_time_ms_);
 
     // update sensor fusion to 1 timestep in the future.
     sensor_fusion = getFutureSensorFusion(map_waypoints_x, map_waypoints_y, map_waypoints_s, sensor_fusion, 1);
 
-    // rotate back to normal after rotating earlier
-    vector<double> xy = getGlobalSpace(x_point, y_point, ref_x, ref_y, ref_yaw);
-
     // update s,d for when we recalculate safe velocity
-    vector<double> sd = getFrenet(xy[0], xy[1], 0, map_waypoints_x, map_waypoints_y);
+    vector<double> sd = getFrenet(xy[0], xy[1], ref_yaw, map_waypoints_x, map_waypoints_y);
     car_s = sd[0];
     car_d = sd[1];
-
-    x_vals.push_back(xy[0]);
-    y_vals.push_back(xy[1]);
   }
 
-  return {x_vals, y_vals};
+  return {next_x_vals, next_y_vals};
 }
 
 // 
@@ -308,10 +278,10 @@ double Trajectory::velocityVAT(double v, double acceleration, double t) {
  * @param {vector<vector<double>>} waypoints
  * @return {double} average velocity
  */
-double Trajectory::velocityWaypoints(vector<vector<double>> waypoints) {
+double Trajectory::velocityPreviousPath(vector<vector<double>> waypoints) {
 
   if (waypoints[0].size() < 2) {
-    return 0.01;
+    return 0.;
   }
 
   double x1 = waypoints[0][waypoints[0].size() - 2];
