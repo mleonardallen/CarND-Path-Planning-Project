@@ -94,7 +94,7 @@ class Trajectory {
 
   double max_vel_ = 49.5;
   double acceleration_ = 40;
-  double safe_leading_s_ = 30;
+  double safe_leading_s_ = 22;
 
   // number of waypoints to include in a trajectory
   // each lane is 4 m wide

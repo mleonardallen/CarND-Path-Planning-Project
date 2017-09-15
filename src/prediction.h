@@ -2,13 +2,21 @@
 #define PRECICTION_H
 
 #include <vector>
+#include <map>
 
 class Prediction {
  public:
-  Prediction(double acceleration);
+  Prediction(
+    double vehicle_id,
+    double average_velocity,
+    double average_acceleration
+  );
   virtual ~Prediction();
+  void print();
 
-  double acceleration_;
+  double vehicle_id_;
+  double average_velocity_;
+  double average_acceleration_;
 };
 
 class Predictor {
@@ -16,7 +24,7 @@ class Predictor {
   Predictor();
   virtual ~Predictor();
 
-  std::vector<std::shared_ptr<Prediction>> getPredictions(std::vector<std::vector<std::vector<double>>> sensor_fusion_history);
+  std::map<int, std::shared_ptr<Prediction>> getPredictions(std::vector<std::vector<std::vector<double>>> sensor_fusion_history);
 
   std::vector<std::vector<double>> getFutureSensorFusion(
     std::vector<double> maps_x,

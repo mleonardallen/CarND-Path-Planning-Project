@@ -68,8 +68,8 @@ vector<vector<double>> Trajectory::getTrajectory(
 
   // get future points for spline
   double target_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
-  vector<int> distances = {40, 60, 90};
-  vector<double> ds = {target_d, target_d, target_d};
+  vector<int> distances = {42, 60, 90};
+  vector<double> ds = {(target_d + car_d * 2) / 3, target_d, target_d, target_d};
   for (int i = 0; i < distances.size(); i++) {
     vector<double> xy = getXY(
       car_s + distances[i], target_d,
@@ -90,10 +90,6 @@ vector<vector<double>> Trajectory::getTrajectory(
   tk::spline spline;
   Predictor predictor;
   spline.set_points(ptsx, ptsy);
-
-  double target_x = safe_leading_s_;
-  double target_y = spline(target_x);
-  double target_dist = sqrt(target_x * target_x + target_y * target_y);
 
   // get the previous path velocity
   double x_point = 0;
@@ -187,21 +183,23 @@ double Trajectory::getAverageVelocity(vector<vector<double>> waypoints) {
   return average;
 }
 
-
 double Trajectory::getLeadingVelocity(double car_s, vector<double> target_vehicle) {
 
   double target_vehicle_vx = target_vehicle[3];
   double target_vehicle_vy = target_vehicle[4];
   double target_vehicle_s = target_vehicle[5];
   double target_vehicle_d = target_vehicle[6];
-  double target_vehicle_speed = velocityVXVY(target_vehicle_vx, target_vehicle_vy);
 
-  // ramp down velocity slowly if approaching car
   double diff_s = distanceS1S2(car_s, target_vehicle_s);
   if (diff_s < safe_leading_s_) {
-    double percent_ref = (safe_leading_s_ - diff_s) / safe_leading_s_;
-    double diff_max = max_vel_ - target_vehicle_speed;
-    return max_vel_ - diff_max * percent_ref;
+    double ref_vel = velocityVXVY(target_vehicle_vx, target_vehicle_vy);
+    // slow down if we get too close
+    if (diff_s < safe_leading_s_/2) {
+      ref_vel = ref_vel * 2/3;
+    }
+    if (ref_vel > 0) {
+      return ref_vel;
+    }
   }
 
   return max_vel_;
@@ -220,17 +218,29 @@ double Trajectory::getSafeVelocity(
   double target_vehicle_id = toState->target_vehicle_id_;
   int car_lane = getLaneNumber(car_d);
 
+  // if target lane is current lane, get velocity if closest vehicle in current lane
+  double ref_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
+  double closest_vehicle_id = getClosestVehicleId(car_s, ref_d, sensor_fusion);
+  if (
+    closest_vehicle_id != -1 &&
+    toState->target_lane_ == car_lane
+  ) {
+    max_vel = getLeadingVelocity(car_s, sensor_fusion[closest_vehicle_id]);
+  }
+
   // find the closest car in current lane
   if (target_vehicle_id == -1) {
-    double closest_vehicle_id = getClosestVehicleId(car_s, car_d, sensor_fusion);
     target_vehicle_id = closest_vehicle_id;
   }
- 
+
   // if approaching a car, scale down max velocity to match that car
   if (target_vehicle_id != -1) {
     vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
     double target_vehicle_s = target_vehicle[5];
-    max_vel = getLeadingVelocity(car_s, target_vehicle);
+    double leading_vel = getLeadingVelocity(car_s, target_vehicle);
+    if (leading_vel < max_vel) {
+      max_vel = leading_vel;
+    }
   }
 
   return max_vel;
@@ -265,7 +275,7 @@ double Trajectory::velocityX1Y1X2Y2(double x1, double y1, double x2, double y2) 
  * @return {double} velocity
  */
 double Trajectory::velocityVXVY(double vx, double vy) {
-  return sqrt(vx * vx + vy * vy);
+  return sqrt(vx * vx + vy * vy) * ms_conversion_;
 }
 
 /**
@@ -383,7 +393,6 @@ vector<double> Trajectory::getXY(double s, double  d, vector<double> maps_x, vec
 
   return {x,y};
 }
-
 
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
 vector<double> Trajectory::getFrenet(double x, double y, double theta, vector<double> maps_x, vector<double> maps_y)

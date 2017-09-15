@@ -182,8 +182,13 @@ int main() {
           );
 
           // check to see if we are done with current operation
-          int car_lane = trajectory.getLaneNumber(car_d);
-          if (states.size() && state->isComplete(car_lane)) {
+          if (
+            states.size() 
+            && state->isComplete(
+              car_x, car_y, car_s, car_d, car_yaw,
+              sensor_fusion
+            )
+          ) {
             states.erase(states.begin());
           }
 

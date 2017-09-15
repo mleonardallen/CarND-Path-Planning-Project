@@ -65,19 +65,27 @@ LaneKeepState::LaneKeepState(int target_vehicle_id, int target_vehicle_lane, int
   target_lane_ = target_lane;
 }
 
-bool LaneKeepState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
+bool LaneKeepState::isValid(shared_ptr<State> fromState, int car_lane, double diff_s, double diff_closest_s) {
   return car_lane == target_vehicle_lane_
     && car_lane == target_lane_
     && target_vehicle_id_ == -1;
 }
 
-bool LaneKeepState::isComplete(int car_lane) {
+bool LaneKeepState::isComplete(
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<vector<double>> sensor_fusion
+) {
   return true;
 }
 
-vector<State::StateId> LaneKeepState::getTransitions(int car_lane) {
+vector<State::StateId> LaneKeepState::getTransitions() {
   return {
-    State::StateId::LANE_KEEP,
+    State::StateId::LANE_KEEP
+    ,
     State::StateId::PREPARE_LANE_CHANGE_LEFT,
     State::StateId::PREPARE_LANE_CHANGE_RIGHT
   };
@@ -93,12 +101,12 @@ PrepareLaneChangeLeftState::PrepareLaneChangeLeftState(int target_vehicle_id, in
   target_lane_ = target_lane;
 }
 
-bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
+bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> fromState, int car_lane, double diff_s, double diff_closest_s) {
+
   // if no leading vehicle, then we assume that we are ready to change lanes,
   // so we should not continue to prepare to change lanes
-
   if (
-    state->getId() == State::StateId::PREPARE_LANE_CHANGE_LEFT
+    fromState->getId() == State::StateId::PREPARE_LANE_CHANGE_LEFT
     && target_vehicle_id_ == -1
   ) return false;
 
@@ -108,29 +116,55 @@ bool PrepareLaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, 
     && diff_closest_s < diff_s
   ) return false;
 
-  // already completed
-  // car is going same speed as target car
-  // car is behind target car
-  // car has a window to make turn
+  // don't use as target vehicle if it's not in the left lane
+  if (
+    target_vehicle_id_ != -1
+    && target_vehicle_lane_ != car_lane - 1
+  ) return false;
 
   return (
     car_lane > 0
-    && car_lane == target_lane_ // target lane is current lane
+    && car_lane == target_lane_ // target lane is current lane because we aren't turning yet
     // distance is in range of car
     && diff_s > lower_limit_
     && diff_s < upper_limit_
   );
 }
 
-bool PrepareLaneChangeLeftState::isComplete(int car_lane) {
-  return true;
+bool PrepareLaneChangeLeftState::isComplete(
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<vector<double>> sensor_fusion
+) {
+  Trajectory trajectory;
+  int car_lane = trajectory.getLaneNumber(car_d);
+  // make sure left lane is clear
+  bool is_clear = true;
+  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
+
+    double s = sensor_fusion[sf_idx][5];
+    double d = sensor_fusion[sf_idx][6];
+
+    // only look at cars in the left lane
+    double lane = trajectory.getLaneNumber(d);
+    if (lane != car_lane - 1) continue;
+
+    double distance = trajectory.distanceS1S2(car_s, s);
+    if (distance < 14 && distance > - 8) {
+      is_clear = false;
+    }
+  }
+
+  return is_clear;
 }
 
-vector<State::StateId> PrepareLaneChangeLeftState::getTransitions(int car_lane) {
-  if (isComplete(car_lane)) {
-    return {State::StateId::LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
-  }
-  return {State::StateId::PREPARE_LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
+vector<State::StateId> PrepareLaneChangeLeftState::getTransitions() {
+  return {
+    State::StateId::LANE_CHANGE_LEFT
+  };
 }
 
 // Prepare Lane Change Right
@@ -145,17 +179,23 @@ PrepareLaneChangeRightState::PrepareLaneChangeRightState(int target_vehicle_id, 
   target_lane_ = target_lane;
 }
 
-bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
+bool PrepareLaneChangeRightState::isValid(shared_ptr<State> fromState, int car_lane, double diff_s, double diff_closest_s) {
   // if no leading vehicle, then we assume that we are ready to change lanes,
   // so we should not continue to prepare to change lanes
   if (
-    state->getId() == State::StateId::PREPARE_LANE_CHANGE_RIGHT
+    fromState->getId() == State::StateId::PREPARE_LANE_CHANGE_RIGHT
     && target_vehicle_id_ == -1
   ) return false;
 
   if (
     target_vehicle_id_ != -1
     && diff_closest_s < diff_s
+  ) return false;
+
+  // don't use as target vehicle if it's not in the right lane
+  if (
+    target_vehicle_id_ != -1
+    && target_vehicle_lane_ != car_lane + 1
   ) return false;
 
   return (
@@ -167,15 +207,40 @@ bool PrepareLaneChangeRightState::isValid(shared_ptr<State> state, int car_lane,
   );
 }
 
-vector<State::StateId> PrepareLaneChangeRightState::getTransitions(int car_lane) {
-  if (isComplete(car_lane)) {
-    return {State::StateId::LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
-  }
-  return {State::StateId::PREPARE_LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
+vector<State::StateId> PrepareLaneChangeRightState::getTransitions() {
+  return {
+    State::StateId::LANE_CHANGE_RIGHT
+  };
 }
 
-bool PrepareLaneChangeRightState::isComplete(int car_lane) {
-  return true;
+bool PrepareLaneChangeRightState::isComplete(
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<vector<double>> sensor_fusion
+) {
+  Trajectory trajectory;
+  int car_lane = trajectory.getLaneNumber(car_d);
+  // make sure left lane is clear
+  bool is_clear = true;
+  for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
+
+    double s = sensor_fusion[sf_idx][5];
+    double d = sensor_fusion[sf_idx][6];
+
+    // only look at cars in the left lane
+    double lane = trajectory.getLaneNumber(d);
+    if (lane != car_lane + 1) continue;
+
+    double distance = trajectory.distanceS1S2(car_s, s);
+    if (distance < 14 && distance > - 8) {
+      is_clear = false;
+    }
+  }
+
+  return is_clear;
 }
 
 // Lane Change Left
@@ -188,7 +253,15 @@ LaneChangeLeftState::LaneChangeLeftState(int target_vehicle_id, int target_vehic
   target_lane_ = target_lane;
 }
 
-bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
+bool LaneChangeLeftState::isValid(shared_ptr<State> fromState, int car_lane, double diff_s, double diff_closest_s) {
+  // if target vehicle is not in target lane, it is not valid
+  if (
+    target_vehicle_id_ != -1
+    && target_vehicle_lane_ != target_lane_
+  ) {
+    return false;
+  }
+
   return (
     target_lane_ == car_lane - 1 // target lane is to the left
     // distance is in range of car
@@ -197,15 +270,24 @@ bool LaneChangeLeftState::isValid(shared_ptr<State> state, int car_lane, double 
   );
 }
 
-bool LaneChangeLeftState::isComplete(int car_lane) {
+bool LaneChangeLeftState::isComplete(
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<vector<double>> sensor_fusion
+) {
+  Trajectory trajectory;
+  int car_lane = trajectory.getLaneNumber(car_d);
   return target_lane_ == car_lane;
 }
 
-vector<State::StateId> LaneChangeLeftState::getTransitions(int car_lane) {
-  if (isComplete(car_lane)) {
-    return {State::StateId::PREPARE_LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
-  }
-  return {State::StateId::LANE_CHANGE_LEFT, State::StateId::LANE_KEEP};
+vector<State::StateId> LaneChangeLeftState::getTransitions() {
+  return {
+    State::StateId::PREPARE_LANE_CHANGE_LEFT,
+    State::StateId::LANE_KEEP
+  };
 }
 
 // Lane Change Right
@@ -218,7 +300,15 @@ LaneChangeRightState::LaneChangeRightState(int target_vehicle_id, int target_veh
   target_lane_ = target_lane;
 }
 
-bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) {
+bool LaneChangeRightState::isValid(shared_ptr<State> fromState, int car_lane, double diff_s, double diff_closest_s) {
+  // if target vehicle is not in target lane, it is not valid
+  if (
+    target_vehicle_id_ != -1
+    && target_vehicle_lane_ != target_lane_
+  ) {
+    return false;
+  }
+
   return (
     target_lane_ == car_lane + 1 // target lane is to the right
     // distance is in range of car
@@ -227,13 +317,22 @@ bool LaneChangeRightState::isValid(shared_ptr<State> state, int car_lane, double
   );
 }
 
-bool LaneChangeRightState::isComplete(int car_lane) {
+bool LaneChangeRightState::isComplete(
+  double car_x,
+  double car_y,
+  double car_s,
+  double car_d,
+  double car_yaw,
+  vector<vector<double>> sensor_fusion
+) {
+  Trajectory trajectory;
+  int car_lane = trajectory.getLaneNumber(car_d);
   return target_lane_ == car_lane;
 }
 
-vector<State::StateId> LaneChangeRightState::getTransitions(int car_lane) {
-  if (isComplete(car_lane)) {
-    return {State::StateId::PREPARE_LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
-  }
-  return {State::StateId::LANE_CHANGE_RIGHT, State::StateId::LANE_KEEP};
+vector<State::StateId> LaneChangeRightState::getTransitions() {
+  return {
+    State::StateId::PREPARE_LANE_CHANGE_RIGHT,
+    State::StateId::LANE_KEEP
+  };
 }

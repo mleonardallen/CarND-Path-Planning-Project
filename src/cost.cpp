@@ -27,16 +27,24 @@ double Cost::getBufferViolations(
   Predictor predictor;
   vector<double> violations;
 
+  double car_length_s = 4.5;
+  double car_width_d = 4.0;
+
   for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
 
     // s,d of current waypoint 
     double waypoint_x = waypoints[0][w_idx];
     double waypoint_y = waypoints[1][w_idx];
     vector<double> car_sd = trajectory.getFrenet(waypoint_x, waypoint_y, 0, maps_x, maps_y);
+
     double car_s = car_sd[0];
     double car_d = car_sd[1];
 
     for (int sf_idx = 0; sf_idx < sensor_fusion.size(); sf_idx++) {
+
+      double target_vehicle_id = sensor_fusion[sf_idx][0];
+      double vx = sensor_fusion[sf_idx][3];
+      double vy = sensor_fusion[sf_idx][4];
 
       double target_vehicle_s = sensor_fusion[sf_idx][5];
       double target_vehicle_d = sensor_fusion[sf_idx][6];
@@ -47,11 +55,24 @@ double Cost::getBufferViolations(
         continue;
       }
 
-      double diff_s = fabs(car_s - target_vehicle_s);
+      double diff_s = trajectory.distanceS1S2(car_s, target_vehicle_s);
       double diff_d = fabs(car_d - target_vehicle_d);
 
+      // 1) s is measured at front of vehicles
+      // 2) simulator cars are 4.5 meters long
+      // example: if the target vehicle s is 10, and the car s is 5.5, 
+      // then the car is hitting rear of the target car
+      bool in_rear_buffer = (diff_s > 0 && diff_s < car_length_s + buffer_s);
+      // if the distance is negative, then the target car is behind the car
+      // example: if the target vehicle s is 5.5 and the car s is 10
+      // then the target car is hitting the rear of the car
+      bool in_front_buffer = (diff_s < 0 && fabs(diff_s) < car_length_s + buffer_s);
+
       // percent is stored so larger violations of buffer space have more weight
-      if (diff_s <= buffer_s && diff_d <= buffer_d) {
+      if (
+        (in_rear_buffer || in_front_buffer)
+        && diff_d < (car_width_d / 2) + buffer_d
+      ) {
 
         double percent = 0.;
         percent += (buffer_s - diff_s) / buffer_s;
@@ -81,27 +102,21 @@ double CollideCost::getCost(
   vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
-
-  double buffer_s = 1.5;
-  double buffer_d = 0.4;
-
   return isCollision(
-    buffer_s, buffer_d,
     waypoints, sensor_fusion, sensor_fusion_history,
     maps_x, maps_y, maps_s
   ) ? weight_ : 0;
 }
 
 bool CollideCost::isCollision(
-  double buffer_s, double buffer_d,
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
   vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
   return getBufferViolations(
-    buffer_s,
-    buffer_d,
+    0, // buffer_s
+    0, // buffer_d
     waypoints,
     sensor_fusion,
     sensor_fusion_history,
@@ -120,8 +135,8 @@ double TooCloseCost::getCost(
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
-  double buffer_s = 1.0;
-  double buffer_d = 0.5;
+  double buffer_s = 2;
+  double buffer_d = 2;
 
   double amount = getBufferViolations(
     buffer_s,
@@ -158,7 +173,7 @@ double SlowSpeedCost::getCost(
 }
 
 ChangeLaneCost::ChangeLaneCost() {
-  weight_ = 0.1;
+  weight_ = 0.15;
 }
 double ChangeLaneCost::getCost(
   shared_ptr<State> toState,

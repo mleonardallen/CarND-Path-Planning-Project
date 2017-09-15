@@ -8,13 +8,11 @@ class PossibleTrajectory {
  public:
 
   PossibleTrajectory(
-    std::shared_ptr<State> state,
+    std::shared_ptr<State> toState,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     double cost,
     double car_x, double car_y, double car_s, double car_d, double car_yaw,
-    int target_lane_id,
-    int target_leading_vehicle_id,
     // previous trajectory
     std::shared_ptr<PossibleTrajectory> prev
   );
@@ -24,7 +22,7 @@ class PossibleTrajectory {
     std::vector<double> map_waypoints_y
   );
 
-  std::shared_ptr<State> state_;
+  std::shared_ptr<State> toState_;
   std::vector<std::vector<double>> trajectory_;
   std::vector<std::vector<double>> sensor_fusion_;
 
@@ -36,9 +34,6 @@ class PossibleTrajectory {
 
   double cost_;
   double total_cost_;
-
-  int target_lane_id_;
-  int target_leading_vehicle_id_;
 
   // future trajectories branching from self
   std::vector<std::shared_ptr<PossibleTrajectory>> nested_;

@@ -1,53 +1,73 @@
 #include "prediction.h"
 #include "trajectory.h"
 #include <iostream>
+#include <map>
 
 using namespace std;
 
 Prediction::Prediction(
-  double acceleration
+  double vehicle_id,
+  double average_velocity,
+  double average_acceleration
 ) {
-  acceleration_ = acceleration;
+  vehicle_id_ = vehicle_id;
+  average_velocity_ = average_velocity;
+  average_acceleration_ = average_acceleration;
 }
 Prediction::~Prediction() {}
+void Prediction::print() {
+  cout << "id: " << vehicle_id_;
+  cout << "\taverage velocity: " << average_velocity_;
+  cout << "\taverage acceleration: " << average_acceleration_;
+  cout << endl;
+}
 
 Predictor::Predictor() {}
 Predictor::~Predictor() {}
 
-vector<shared_ptr<Prediction>> Predictor::getPredictions(vector<vector<vector<double>>> sensor_fusion_history) {
-  vector<shared_ptr<Prediction>> predictions;
+map<int, shared_ptr<Prediction>> Predictor::getPredictions(vector<vector<vector<double>>> sensor_fusion_history) {
+  map<int, shared_ptr<Prediction>> predictions;
   Trajectory trajectory;
 
   int count = sensor_fusion_history[0].size();
   for (int i = 0; i < count; i++) {
 
-    double vx0 = sensor_fusion_history[0][i][3];
-    double vy0 = sensor_fusion_history[0][i][4];
-
     double v0 = 0;
     double v1 = 0;
-    double average = 0;
-    double avg_acc = 0;
+    double average_velocity = 0;
+    double average_acceleration = 0;
     double acceleration = 0;
 
-    for (int h = 0; h < sensor_fusion_history.size(); h++) {
-      vector<double> target_vehicle = sensor_fusion_history[h][i];
+    double vehicle_id = sensor_fusion_history[0][i][0];
 
-      // average velocity
-      v1 = trajectory.velocityVXVY(target_vehicle[3], target_vehicle[4]);
-      average = ((average * h) + v1) / (h + 1);
+    int d = sensor_fusion_history[0][i][6];
+    int lane = trajectory.getLaneNumber(d);
 
-      // acceleration
-      double acc = (v1 - v0) / trajectory.cycle_time_ms_;
-      avg_acc = ((avg_acc * h) + acc) / (h + 1);
-      v0 = v1;
+    if (lane >= 0 && lane <= 2) {
+      for (int h = 0; h < sensor_fusion_history.size(); h++) {
 
+        vector<double> target_vehicle = sensor_fusion_history[h][i];
+
+        double vx = target_vehicle[3];
+        double vy = target_vehicle[4];
+
+        // average velocity
+        v1 = trajectory.velocityVXVY(vx, vy);
+        average_velocity = ((average_velocity * h) + v1) / (h + 1);
+
+        // average acceleration
+        double acceleration = (v1 - v0) / trajectory.cycle_time_ms_;
+        average_acceleration = ((average_acceleration * h) + acceleration) / (h + 1);
+
+        v0 = v1;
+      }
     }
 
-    cout << avg_acc << endl;
-    // double velocity = trajectory.getAverageVelocity({xs, ys});
-    // cout << i << ", last: " << velocity << ", average: " << average << endl;
-    predictions.push_back(shared_ptr<Prediction>(new Prediction(0.0)));
+    predictions[i] = shared_ptr<Prediction>(new Prediction(
+      vehicle_id,
+      average_velocity,
+      average_acceleration
+    ));
   }
 
   return predictions;
@@ -70,6 +90,7 @@ vector<vector<double>> Predictor::getFutureSensorFusion(
 ) {
   Trajectory trajectory;
   vector<vector<double>> new_sensor_fusion;
+  map<int, shared_ptr<Prediction>> predictions = getPredictions(sensor_fusion_history);
 
   for (int i = 0; i < sensor_fusion.size(); i++) {
 
@@ -85,8 +106,9 @@ vector<vector<double>> Predictor::getFutureSensorFusion(
     int lane = trajectory.getLaneNumber(d);
     if (lane >= 0 && lane <= 2) {
       // get future vehicle_s
-      double velocity = trajectory.velocityVXVY(vx, vy);
-      s += velocity * trajectory.cycle_time_ms_ * N;
+      double velocity = predictions[id]->average_velocity_;
+      double acceleration = predictions[id]->average_acceleration_;
+      s += trajectory.distanceVAT(velocity, acceleration, trajectory.cycle_time_ms_ * N);
 
       // get future x,y using s,d
       vector<double> xy = trajectory.getXY(s, d, map_waypoints_x, map_waypoints_y, map_waypoints_s);
@@ -100,14 +122,13 @@ vector<vector<double>> Predictor::getFutureSensorFusion(
   return new_sensor_fusion;
 }
 
-
 vector<vector<vector<double>>> Predictor::updateHistory(
   vector<vector<vector<double>>> sensor_fusion_history,
   vector<vector<double>> sensor_fusion
 ) {
 
   sensor_fusion_history.push_back(sensor_fusion);
-  if (sensor_fusion_history.size() > 10) {
+  if (sensor_fusion_history.size() > 30) {
     sensor_fusion_history.erase(sensor_fusion_history.begin());
   }
 

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <iomanip>
+#include <math.h>
 #include "behavior.h"
 #include "trajectory.h"
 #include "prediction.h"
@@ -10,16 +11,14 @@
 using namespace std;
 
 PossibleTrajectory::PossibleTrajectory(
-    shared_ptr<State> state,
+    shared_ptr<State> toState,
     vector<vector<double>> trajectory,
     vector<vector<double>> sensor_fusion,
     double cost,
     double car_x, double car_y, double car_s, double car_d, double car_yaw,
-    int target_leading_vehicle_id,
-    int target_lane_id,
     shared_ptr<PossibleTrajectory> prev
 ) {
-  state_ = state;
+  toState_ = toState;
   trajectory_ = trajectory;
   sensor_fusion_ = sensor_fusion;
   cost_ = cost;
@@ -31,8 +30,6 @@ PossibleTrajectory::PossibleTrajectory(
   car_yaw_ = car_yaw;
 
   total_cost_ = cost;
-  target_leading_vehicle_id_ = target_leading_vehicle_id;
-  target_lane_id_ = target_lane_id;
 
   // set previous possible trajectory
   prev_ = prev;
@@ -114,10 +111,10 @@ void BehaviorPlanner::transition(
     }
   }
 
-  states.push_back(lowest->state_);
+  states.push_back(lowest->toState_);
   while (lowest->lowest_) {
     lowest = lowest->lowest_;
-    states.push_back(lowest->state_);
+    states.push_back(lowest->toState_);
   }
 
   thread_is_done = true;
@@ -152,27 +149,38 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectoriesR
     depth = depth - 1;
     for (int i = 0; i < possible_trajectories.size(); i++) {
       // - RECURSION
+      int N = trajectory.num_path_;
+
       previous_path_x = possible_trajectories[i]->trajectory_[0];
       previous_path_y = possible_trajectories[i]->trajectory_[1];
-      car_x = previous_path_x.back();
-      car_y = previous_path_y.back();
-      vector<double> sd = trajectory.getFrenet(car_x, car_y, 0, map_waypoints_x, map_waypoints_y);
+
+      // last location of the car is right before the the previous path leftovers
+      car_x = previous_path_x[N - 3];
+      car_y = previous_path_y[N - 3];
+
+      double x1 = previous_path_x[N - 1];
+      double x2 = previous_path_x[N - 2];
+      double y1 = previous_path_y[N - 1];
+      double y2 = previous_path_y[N - 2];
+      double yaw = atan2(y1 - y2, x1 - x2);
+
+      vector<double> sd = trajectory.getFrenet(car_x, car_y, yaw, map_waypoints_x, map_waypoints_y);
 
       // update sensor fusion to N-2 timestep in the future.
-      int N = trajectory.num_path_;
-      sensor_fusion = predictor.getFutureSensorFusion(
-        map_waypoints_x, map_waypoints_y, map_waypoints_s, 
-        sensor_fusion, sensor_fusion_history, N - 2
-      );
+
       getPossibleTrajectoriesRecursive(
         car_x, car_y, sd[0], sd[1], car_yaw,
         // previous path contains a couple points so we can get velocity
-        {previous_path_x[N - 2], previous_path_x[N - 1]},
-        {previous_path_y[N - 2], previous_path_y[N - 1]},
+        {x2, x1},
+        {y2, y1},
         map_waypoints_x, map_waypoints_y, map_waypoints_s,
-        sensor_fusion,
+        // future sensor fusion
+        predictor.getFutureSensorFusion(
+          map_waypoints_x, map_waypoints_y, map_waypoints_s, 
+          sensor_fusion, sensor_fusion_history, N - 2
+        ),
         sensor_fusion_history,
-        possible_trajectories[i]->state_,
+        possible_trajectories[i]->toState_,
         possible_trajectories[i], // this pointer is modified to link to lowest cost next trajectory
         depth
       );
@@ -224,8 +232,8 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
   };
 
   int car_lane = trajectory.getLaneNumber(car_d);
-  int closest_vehicle_id = trajectory.getClosestVehicleId(car_d, car_s, sensor_fusion);
-  vector<State::StateId> transitions = fromState->getTransitions(car_lane);
+  int closest_vehicle_id = trajectory.getClosestVehicleId(car_s, car_d, sensor_fusion);
+  vector<State::StateId> transitions = fromState->getTransitions();
 
   double closest_vehicle_s = 0;
   double diff_closest_s = 0;
@@ -252,7 +260,7 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
 
       // get target vehicle lane and distance
       int target_vehicle_id = target_vehicle_ids[v_idx];
-      if (target_vehicle_id != -1) { 
+      if (target_vehicle_id != -1) {
         double target_vehicle_s = sensor_fusion[target_vehicle_id][5];
         double target_vehicle_d = sensor_fusion[target_vehicle_id][6];
         
@@ -313,8 +321,6 @@ vector<shared_ptr<PossibleTrajectory>> BehaviorPlanner::getPossibleTrajectories(
             sensor_fusion,
             cost,
             car_x, car_y, car_s, car_d, car_yaw,
-            target_vehicle_id,
-            target_lanes[l_idx],
             prev_possible_trajectory
           )
         ));

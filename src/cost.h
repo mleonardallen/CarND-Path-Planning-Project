@@ -77,7 +77,6 @@ class CollideCost : public Cost {
   );
 
   bool isCollision(
-    double buffer_s9, double buffer_d,
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
