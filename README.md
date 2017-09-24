@@ -11,17 +11,21 @@ In this project your goal is to safely navigate around a virtual highway with ot
 
 ### Best Distance Without Incident.
 
-On average my planner travels about 10 miles before getting into an incident.  Sometimes it gets into an incident much before that, and sometimes the car can last a while before getting into an incident.  My record is `42.83` miles.
+On average my car travels about 10 miles before getting into an incident.  Sometimes it gets into an incident much before that, and sometimes the car can last a while before getting into an incident.  My record is `42.83` miles.
 
 ![Record](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/record.jpg)
 
 ### Debugging
+
+#### Car Colors
 
 Car color is not contained in the `sensor fusion` module which makes it difficult to match terminal output to the cars on the screen.  The following matches car colors to car id given by the `sensor fusion` module.
 
 Note: Colors repeat on higher numbers.
 
 ![Car Numbers](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/numbers.png)
+
+#### Lane Values
 
 In frenet coordinates, the d coordinate represents side-to-side position on the road.  When reading terminal output, it's good to have an intuition on the range of these values.
  
