@@ -31,7 +31,7 @@ class Predictor {
     std::vector<double> maps_y,
     std::vector<double> maps_s,
     std::vector<std::vector<double>> sensor_fusion,
-    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    std::map<int, std::shared_ptr<Prediction>> predictions,
     int N
   );
 

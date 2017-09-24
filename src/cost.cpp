@@ -1,6 +1,7 @@
 #include <iostream>
 #include <numeric>
 #include <memory>
+#include <iomanip>
 #include "cost.h"
 #include "math.h"
 #include "trajectory.h"
@@ -20,23 +21,47 @@ double Cost::getBufferViolations(
   vector<vector<vector<double>>> sensor_fusion_history,
   vector<double> maps_x,
   vector<double> maps_y,
-  vector<double> maps_s
+  vector<double> maps_s,
+  bool print
 ) {
 
   Trajectory trajectory;
   Predictor predictor;
   vector<double> violations;
+  map<int, shared_ptr<Prediction>> predictions = predictor.getPredictions(sensor_fusion_history);
 
-  double car_length_s = 4.5;
-  double car_width_d = 4.0;
+  double car_length_s = 5.0;
+  double car_width_d = 3;
+  int N = waypoints[0].size();
 
-  for (int w_idx = 0; w_idx < waypoints[0].size(); w_idx++) {
+  for (int w_idx = 0; w_idx < N; w_idx++) {
 
-    // s,d of current waypoint 
-    double waypoint_x = waypoints[0][w_idx];
-    double waypoint_y = waypoints[1][w_idx];
-    vector<double> car_sd = trajectory.getFrenet(waypoint_x, waypoint_y, 0, maps_x, maps_y);
+    vector<double> waypoints_x = waypoints[0];
+    vector<double> waypoints_y = waypoints[1];
 
+    double car_x = waypoints_x[w_idx];
+    double car_y = waypoints_y[w_idx];
+
+    // first we need car_yaw
+    double x1;
+    double x2;
+    double y1;
+    double y2;
+    if (w_idx == 0) {
+      x1 = car_x;
+      y1 = car_y;
+      x2 = waypoints_x[w_idx+1];
+      y2 = waypoints_y[w_idx+1];
+    } else {
+      x1 = waypoints_x[w_idx-1];
+      y1 = waypoints_y[w_idx-1];
+      x2 = car_x;
+      y2 = car_y;
+    }
+    double car_yaw = atan2(y2 - y1, x2 - x1);
+
+    // get s,d from current waypoint
+    vector<double> car_sd = trajectory.getFrenet(car_x, car_y, car_yaw, maps_x, maps_y);
     double car_s = car_sd[0];
     double car_d = car_sd[1];
 
@@ -56,27 +81,32 @@ double Cost::getBufferViolations(
       }
 
       double diff_s = trajectory.distanceS1S2(car_s, target_vehicle_s);
-      double diff_d = fabs(car_d - target_vehicle_d);
-
-      // 1) s is measured at front of vehicles
-      // 2) simulator cars are 4.5 meters long
-      // example: if the target vehicle s is 10, and the car s is 5.5, 
-      // then the car is hitting rear of the target car
-      bool in_rear_buffer = (diff_s > 0 && diff_s < car_length_s + buffer_s);
-      // if the distance is negative, then the target car is behind the car
-      // example: if the target vehicle s is 5.5 and the car s is 10
-      // then the target car is hitting the rear of the car
-      bool in_front_buffer = (diff_s < 0 && fabs(diff_s) < car_length_s + buffer_s);
+      double diff_d = car_d - target_vehicle_d;
 
       // percent is stored so larger violations of buffer space have more weight
+      // if (print && target_vehicle_id == 0) {
+      //   cout << "id: " << left << setw(4) << target_vehicle_id;
+      //   cout << "t: " << left << setw(4) << w_idx;
+      //   // cout << "\tcar lane: " << trajectory.getLaneNumber(car_d);
+      //   // cout << "\ttarget lane: " << target_vehicle_lane;
+      //   cout << "car_s: " << left << setw(10) << car_s;
+      //   cout << "target_s: " << left << setw(10) << target_vehicle_s;
+      //   // cout << "car_d: " << left << setw(10) << car_d;
+      //   // cout << "target_d: " << left << setw(10) << target_vehicle_d;
+      //   cout << "diff_s: " << left << setw(10) << diff_s;
+      //   cout << "diff_d: " << left << setw(10) << diff_d;
+      //   // cout << "target_vel: " << trajectory.velocityVXVY(vx, vy);
+      //   cout << endl;
+      // }
+
       if (
-        (in_rear_buffer || in_front_buffer)
-        && diff_d < (car_width_d / 2) + buffer_d
+        fabs(diff_s) < car_length_s + buffer_s
+        && fabs(diff_d) < car_width_d + buffer_d
       ) {
 
         double percent = 0.;
-        percent += (buffer_s - diff_s) / buffer_s;
-        percent += (buffer_d - diff_d) / buffer_d;
+        percent += (buffer_s + car_length_s - fabs(diff_s)) / (buffer_s + car_length_s);
+        percent += (buffer_d + car_width_d - fabs(diff_d)) / (buffer_d + car_width_d);
 
         violations.push_back(percent);
       }
@@ -85,7 +115,7 @@ double Cost::getBufferViolations(
     // update sensor fusion to 1 timestep in the future.
     sensor_fusion = predictor.getFutureSensorFusion(
       maps_x, maps_y, maps_s,
-      sensor_fusion, sensor_fusion_history, 1
+      sensor_fusion, predictions, 1
     );
   }
 
@@ -104,7 +134,7 @@ double CollideCost::getCost(
 ) {
   return isCollision(
     waypoints, sensor_fusion, sensor_fusion_history,
-    maps_x, maps_y, maps_s
+    maps_x, maps_y, maps_s, false
   ) ? weight_ : 0;
 }
 
@@ -112,7 +142,8 @@ bool CollideCost::isCollision(
   vector<vector<double>> waypoints,
   vector<vector<double>> sensor_fusion,
   vector<vector<vector<double>>> sensor_fusion_history,
-  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
+  vector<double> maps_x, vector<double> maps_y, vector<double> maps_s,
+  bool print
 ) {
   return getBufferViolations(
     0, // buffer_s
@@ -120,7 +151,8 @@ bool CollideCost::isCollision(
     waypoints,
     sensor_fusion,
     sensor_fusion_history,
-    maps_x, maps_y, maps_s
+    maps_x, maps_y, maps_s,
+    print
   ) > 0;
 }
 
@@ -135,8 +167,8 @@ double TooCloseCost::getCost(
   vector<double> maps_x, vector<double> maps_y, vector<double> maps_s
 ) {
 
-  double buffer_s = 2;
-  double buffer_d = 2;
+  double buffer_s = 5;
+  double buffer_d = 0.5;
 
   double amount = getBufferViolations(
     buffer_s,
@@ -146,7 +178,8 @@ double TooCloseCost::getCost(
     sensor_fusion_history,
     maps_x,
     maps_y,
-    maps_s
+    maps_s,
+    false
   );
 
   return amount * weight_;
@@ -173,7 +206,7 @@ double SlowSpeedCost::getCost(
 }
 
 ChangeLaneCost::ChangeLaneCost() {
-  weight_ = 0.15;
+  weight_ = 0.3;
 }
 double ChangeLaneCost::getCost(
   shared_ptr<State> toState,

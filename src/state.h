@@ -22,105 +22,220 @@ class State {
 
   StateId getId();
   std::string getName();
-  void print();
 
-  virtual bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s) = 0;
-  virtual bool isComplete(
+  virtual bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  ) = 0;
+  virtual bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   ) = 0;
   virtual std::vector<State::StateId> getTransitions() = 0;
 
   std::string name_;
-  int target_vehicle_id_;
-  int target_vehicle_lane_;
   int target_lane_;
-  double lower_limit_ = -10;
-  double upper_limit_ = 45;
 };
 
 class LaneKeepState : public State {
  public:
-  LaneKeepState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
-  bool isComplete(
+  LaneKeepState(int target_lane);
+  bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  );
+  bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
   std::vector<StateId> getTransitions();
 };
 
 class LaneChangeLeftState : public State {
  public:
-  LaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
-  bool isComplete(
+  LaneChangeLeftState(int target_lane);
+  bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  );
+  bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
   std::vector<StateId> getTransitions();
 };
 
 class LaneChangeRightState : public State {
  public:
-  LaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
-  bool isComplete(
+  LaneChangeRightState(int target_lane);
+  bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  );
+  bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
   std::vector<StateId> getTransitions();
 };
 
 class PrepareLaneChangeLeftState : public State {
  public:
-  PrepareLaneChangeLeftState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
-  bool isComplete(
+  PrepareLaneChangeLeftState(int target_lane);
+  bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  );
+  bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
   std::vector<StateId> getTransitions();
 };
 
 class PrepareLaneChangeRightState : public State {
  public:
-  PrepareLaneChangeRightState(int target_vehicle_id, int target_vehicle_lane, int target_lane);
-  bool isValid(std::shared_ptr<State> state, int car_lane, double diff_s, double diff_closest_s);
-  bool isComplete(
+  PrepareLaneChangeRightState(int target_lane);
+  bool isValid(
+    std::shared_ptr<State> fromState,
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
     double car_x,
     double car_y,
     double car_s,
     double car_d,
     double car_yaw,
-    std::vector<std::vector<double>> sensor_fusion
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
+  );
+  bool isComplete(
+    std::vector<std::vector<double>> sensor_fusion,
+    std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
+    double car_x,
+    double car_y,
+    double car_s,
+    double car_d,
+    double car_yaw,
+    std::vector<double> previous_path_x,
+    std::vector<double> previous_path_y,
+    std::vector<double> map_waypoints_x,
+    std::vector<double> map_waypoints_y,
+    std::vector<double> map_waypoints_s
   );
   std::vector<StateId> getTransitions();
 };
 
 class StateFactory {
  public:
-  static std::shared_ptr<State> create(State::StateId id, int target_vehicle_id, int target_vehicle_lane, int target_lane);
+  static std::shared_ptr<State> create(State::StateId id, int target_lane);
 };
 
 #endif /* STATE_H */

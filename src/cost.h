@@ -17,7 +17,8 @@ class Cost {
     std::vector<std::vector<double>> waypoints,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
-    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s,
+    bool print
   );
 
   virtual double getCost(
@@ -80,7 +81,8 @@ class CollideCost : public Cost {
     std::vector<std::vector<double>> trajectory,
     std::vector<std::vector<double>> sensor_fusion,
     std::vector<std::vector<std::vector<double>>> sensor_fusion_history,
-    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s
+    std::vector<double> maps_x, std::vector<double> maps_y, std::vector<double> maps_s,
+    bool print
   );
 };
 

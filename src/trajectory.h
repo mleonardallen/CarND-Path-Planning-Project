@@ -24,7 +24,8 @@ class Trajectory {
     std::vector<double> previous_path_y,
     std::vector<double> map_waypoints_x,
     std::vector<double> map_waypoints_y,
-    std::vector<double> map_waypoints_s
+    std::vector<double> map_waypoints_s,
+    int num_path
   );
 
   double getLeadingVelocity(double car_s, std::vector<double> target_vehicle);
@@ -37,6 +38,7 @@ class Trajectory {
 
   double deg2rad(double x);
   double rad2deg(double x);
+  double rad2positive(double x);
 
   double velocityVXVY(double vx, double vy);
   double velocityX1Y1X2Y2(double x1, double y1, double x2, double y2);

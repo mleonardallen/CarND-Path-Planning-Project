@@ -60,15 +60,15 @@ map<int, shared_ptr<Prediction>> Predictor::getPredictions(vector<vector<vector<
         average_acceleration = ((average_acceleration * h) + acceleration) / (h + 1);
 
         v0 = v1;
-      }
-    }
+      } // for sensor_fusion_history
+    } // if lane
 
     predictions[i] = shared_ptr<Prediction>(new Prediction(
       vehicle_id,
       average_velocity,
       average_acceleration
     ));
-  }
+  } // for vehicles in sensor_fusion
 
   return predictions;
 }
@@ -85,12 +85,12 @@ vector<vector<double>> Predictor::getFutureSensorFusion(
   vector<double> map_waypoints_y,
   vector<double> map_waypoints_s,
   vector<vector<double>> sensor_fusion,
-  vector<vector<vector<double>>> sensor_fusion_history,
+  map<int, shared_ptr<Prediction>> predictions,
   int N
 ) {
   Trajectory trajectory;
   vector<vector<double>> new_sensor_fusion;
-  map<int, shared_ptr<Prediction>> predictions = getPredictions(sensor_fusion_history);
+   // = getPredictions(sensor_fusion_history);
 
   for (int i = 0; i < sensor_fusion.size(); i++) {
 

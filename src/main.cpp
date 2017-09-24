@@ -12,6 +12,7 @@
 #include "behavior.h"
 #include "state.h"
 #include "prediction.h"
+#include "cost.h"
 
 using namespace std;
 
@@ -48,13 +49,7 @@ int main() {
   BehaviorPlanner planner;
   Predictor predictor;
 
-  shared_ptr<State> state = StateFactory::create(
-    State::StateId::LANE_KEEP,
-    -1, // target vehicle
-    1, // target lane
-    1 // target lane
-  );
-
+  shared_ptr<State> state = StateFactory::create(State::StateId::LANE_KEEP, 1 /*target lane*/);
   vector<shared_ptr<State>> states;
   vector<vector<vector<double>>> sensor_fusion_history;
 
@@ -164,12 +159,7 @@ int main() {
             state = states[0];
           } else {
             int target_lane = trajectory.getLaneNumber(car_d);
-            state = StateFactory::create(
-              State::StateId::LANE_KEEP,
-              -1, // target vehicle
-              target_lane,
-              target_lane
-            );
+            state = StateFactory::create(State::StateId::LANE_KEEP, target_lane); 
           }
 
           vector<vector<double>> waypoints = trajectory.getTrajectory(
@@ -178,21 +168,25 @@ int main() {
             sensor_fusion_history,
             car_x, car_y, car_s, car_d, car_yaw,
             previous_path_x, previous_path_y,
-            map_waypoints_x, map_waypoints_y, map_waypoints_s
+            map_waypoints_x, map_waypoints_y, map_waypoints_s,
+            trajectory.num_path_
           );
 
           // check to see if we are done with current operation
+          // especially important for prepare lane change
           if (
             states.size() 
             && state->isComplete(
+              sensor_fusion, sensor_fusion_history,
               car_x, car_y, car_s, car_d, car_yaw,
-              sensor_fusion
+              previous_path_x, previous_path_y, map_waypoints_x, map_waypoints_y, map_waypoints_s
             )
           ) {
             states.erase(states.begin());
           }
 
           // END
+
           msgJson["next_x"] = waypoints[0];
           msgJson["next_y"] = waypoints[1];
 

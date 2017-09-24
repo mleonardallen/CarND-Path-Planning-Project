@@ -24,8 +24,12 @@ vector<vector<double>> Trajectory::getTrajectory(
   vector<double> previous_path_y,
   vector<double> map_waypoints_x,
   vector<double> map_waypoints_y,
-  vector<double> map_waypoints_s
+  vector<double> map_waypoints_s,
+  int num_path
 ) {
+
+  Predictor predictor;
+  map<int, shared_ptr<Prediction>> predictions = predictor.getPredictions(sensor_fusion_history);
 
   // Build trajector from previous points and future points
   vector<double> next_x_vals;
@@ -46,8 +50,8 @@ vector<vector<double>> Trajectory::getTrajectory(
 
   // get previous points for spline (previous points bring continuity)
   if (prev_size < 2) {
-    double prev_car_x = car_x - cos(car_yaw);
-    double prev_car_y = car_y - sin(car_yaw);
+    double prev_car_x = car_x - fabs(cos(car_yaw));
+    double prev_car_y = car_y - fabs(sin(car_yaw));
     ptsx.push_back(prev_car_x);
     ptsx.push_back(car_x);
     ptsy.push_back(prev_car_y);
@@ -66,6 +70,7 @@ vector<vector<double>> Trajectory::getTrajectory(
     ptsy.push_back(ref_y);
   }
 
+
   // get future points for spline
   double target_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
   vector<int> distances = {42, 60, 90};
@@ -80,6 +85,7 @@ vector<vector<double>> Trajectory::getTrajectory(
   }
 
   // convert points to local space so spline calculation is more efficient
+  // std::sort (myvector.begin(), myvector.begin()+4);
   for (int i = 0; i < ptsx.size(); i++) {
     vector<double> xy = getLocalSpace(ptsx[i], ptsy[i], ref_x, ref_y, ref_yaw);
     ptsx[i] = xy[0];
@@ -88,18 +94,17 @@ vector<vector<double>> Trajectory::getTrajectory(
 
   // create the spline
   tk::spline spline;
-  Predictor predictor;
   spline.set_points(ptsx, ptsy);
 
   // get the previous path velocity
   double x_point = 0;
   double ref_vel = velocityPreviousPath({previous_path_x, previous_path_y});
 
-  for (int i = 1; i <= num_path_ - prev_size; i++) {
+  for (int i = 0; i < num_path - prev_size; i++) {
 
     double safe_vel = getSafeVelocity(car_s, car_d, toState, sensor_fusion);
     double acceleration = (ref_vel < safe_vel) ? acceleration_ : -acceleration_;
-    
+
     x_point += distanceVAT(ref_vel, acceleration, cycle_time_ms_);
     double y_point = spline(x_point);
 
@@ -114,7 +119,7 @@ vector<vector<double>> Trajectory::getTrajectory(
     // update sensor fusion to 1 timestep in the future.
     sensor_fusion = predictor.getFutureSensorFusion(
       map_waypoints_x, map_waypoints_y, map_waypoints_s, 
-      sensor_fusion, sensor_fusion_history, 1
+      sensor_fusion, predictions, 1
     );
 
     // update s,d for when we recalculate safe velocity
@@ -215,28 +220,14 @@ double Trajectory::getSafeVelocity(
   vector<vector<double>> sensor_fusion
 ) {
   double max_vel = max_vel_;
-  double target_vehicle_id = toState->target_vehicle_id_;
   int car_lane = getLaneNumber(car_d);
 
   // if target lane is current lane, get velocity if closest vehicle in current lane
   double ref_d = lane_center_offset_ + lane_size_ * toState->target_lane_;
-  double closest_vehicle_id = getClosestVehicleId(car_s, ref_d, sensor_fusion);
-  if (
-    closest_vehicle_id != -1 &&
-    toState->target_lane_ == car_lane
-  ) {
-    max_vel = getLeadingVelocity(car_s, sensor_fusion[closest_vehicle_id]);
-  }
-
-  // find the closest car in current lane
-  if (target_vehicle_id == -1) {
-    target_vehicle_id = closest_vehicle_id;
-  }
-
+  int vehicle_id = getClosestVehicleId(car_s, ref_d, sensor_fusion);
   // if approaching a car, scale down max velocity to match that car
-  if (target_vehicle_id != -1) {
-    vector<double> target_vehicle = sensor_fusion[target_vehicle_id];
-    double target_vehicle_s = target_vehicle[5];
+  if (vehicle_id != -1) {
+    vector<double> target_vehicle = sensor_fusion[vehicle_id];
     double leading_vel = getLeadingVelocity(car_s, target_vehicle);
     if (leading_vel < max_vel) {
       max_vel = leading_vel;
@@ -375,7 +366,7 @@ vector<double> Trajectory::getXY(double s, double  d, vector<double> maps_x, vec
   while(s > maps_s[prev_wp+1] && (prev_wp < (int)(maps_s.size()-1) ))
   {
     prev_wp++;
-  }  
+  }
 
   int wp2 = (prev_wp+1)%maps_x.size();
 
@@ -397,7 +388,7 @@ vector<double> Trajectory::getXY(double s, double  d, vector<double> maps_x, vec
 // Transform from Cartesian x,y coordinates to Frenet s,d coordinates
 vector<double> Trajectory::getFrenet(double x, double y, double theta, vector<double> maps_x, vector<double> maps_y)
 {
-  int next_wp = NextWaypoint(x, y, theta, maps_x,maps_y);
+  int next_wp = NextWaypoint(x, y, theta, maps_x, maps_y);
 
   int prev_wp;
   prev_wp = next_wp-1;
@@ -470,12 +461,18 @@ int Trajectory::NextWaypoint(double x, double y, double theta, vector<double> ma
   int closestWaypoint = ClosestWaypoint(x,y,maps_x,maps_y);
   double map_x = maps_x[closestWaypoint];
   double map_y = maps_y[closestWaypoint];
-  double heading = atan2( (map_y-y),(map_x-x) );
-  double angle = fabs(theta-heading);
 
-  if (angle > pi()/4)
+  double heading = atan2((map_y-y), (map_x-x));
+  double theta_pos = fmod(theta + (2 * pi()), 2 * pi());
+  double heading_pos = fmod(heading + (2 * pi()), 2 * pi());
+  double angle = fabs(theta_pos - heading_pos);
+  if (angle > pi()) {
+    angle = (2*pi()) - angle;
+  }
+
+  if (angle > pi()/2)
   {
-    closestWaypoint++;
+    closestWaypoint = (closestWaypoint + 1) % maps_x.size();
   }
 
   return closestWaypoint;
