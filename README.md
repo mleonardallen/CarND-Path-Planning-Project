@@ -31,12 +31,13 @@ My behavior planner runs on a separate thread so that I may try to look into the
 
 The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`.  Each state three important methods.
 
+- `transitions` provides valid transition states from given state.
 - `isValid` determines if the current parameters such as sensor fusion data and car frenet coordinates apply to the given state.  If not valid, then this state will not be considered by the behavior planner.
-- `isComplete` determines if it is okay to transition to the next state.  This is especially important for the prepare lane change states where we do not want to change lanes if it would cause a collision.  In the example below, the `Prepare Lane Change Left (<=)` is not complete until changing lanes avoids collision.  Once complete, the car is allowed to transition into the `Change Lane Left (<=)` state given by the bahavior planner.
+- `isComplete` determines if it is okay to transition to the next state.  This is especially important for the prepare lane change states where we do not want to change lanes if it would cause a collision.  
+
+Example: The `Prepare Lane Change Left (<=)` is not complete until changing lanes avoids collision.  Once complete, the car is allowed to transition into the `Change Lane Left (<=)` state given by the bahavior planner.
 
 ![Safe Lane Change](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/safe-lane-change.gif)
-
-- `transitions` provides valid transition states from given state.
 
 ### Costs
 
@@ -47,6 +48,8 @@ In creating costs, I decided to go with `Collide Cost`, `Slow Speed Cost`, and a
 - `Change Lane Cost` penalizes the car for changing lanes.  This is important to prevent the car from changing lanes frequently when it would be fine to stay in the `Lane Keep` state.  Also because lane changes are inheritly more dangerous than staying in the current lane, it is a good idea to discourage lane changes unless they are needed.
 
 Example: `Slow Speed Cost` for `Lane Keep` increases, while `Change Lane Left (<=)` allows the car to travel faster and have a reduced `Slow Speed Cost`.  Since the cost for changing lanes is lower than staying in the current lane, the planner determines that chaning lanes is the best option.
+
+![Lane Change](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/lane-change.gif)
 
 ### Prediction
 
