@@ -9,6 +9,10 @@ In this project your goal is to safely navigate around a virtual highway with ot
 
 ## Implimentation
 
+### Debugging
+
+[!Car Numbers](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/numbers.png)
+
 ### Behavior Planner
 
 ### Prediction
