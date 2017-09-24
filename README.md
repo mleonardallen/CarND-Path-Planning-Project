@@ -25,7 +25,7 @@ The highway has 6 lanes, with 3 heading in each direction, and each lane meaurin
 
 ### Behavior Planner
 
-As input the behavior planner receives `sensor fusion` data, `map` data, current [State](#States), as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
+As input the behavior planner receives `sensor fusion` data, `map` data, current [State](#states), as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
 
 1. Given current `state`, get all transition `states`.
 2. For each `transition` state, determine if the transition `is valid` given the current environment.  For example `Prepare Lane Change Left (<=)` is not a `valid` `state` if the car is already in the left most lane.
@@ -79,7 +79,7 @@ The prediction module is very simplistic, and does not do try to predict lane ch
 
 ### Trajectory
 
-The trajectory module is responsible for generating waypoints that are sent to the car's controller.  In order to generate waypoints, the Trajectory module receives the `sensor fusion` data, current car data, as well as the state for which we want to generate waypoints.
+The trajectory module is responsible for generating waypoints that are sent to the car's controller.  In order to generate waypoints, the Trajectory module receives the `sensor fusion` data, current car data, as well as the `state` for which we want to generate waypoints.
 
 #### Safe Velocity
 
@@ -97,11 +97,6 @@ In order to create jerk minimized trajectories and not exceed acceleration limit
  - Taking the simulation cycle into account (20 ms between each waypoint), I use kinematics equations for distance including velocity and acceleration.  By incorporating these into the equation, I can ensure the car does not exceed acceleration between any given waypoints.
 
 
-#### The map of the highway is in data/highway_map.txt
-Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
-
-The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
-
 ## Basic Build Instructions
 
 1. Clone this repo.
@@ -110,6 +105,11 @@ The highway's waypoints loop around so the frenet s value, distance along the ro
 4. Run it: `./path_planning`.
 
 Here is the data provided from the Simulator to the C++ Program
+
+#### The map of the highway is in data/highway_map.txt
+Each waypoint in the list contains  [x,y,s,dx,dy] values. x and y are the waypoint's map coordinate position, the s value is the distance along the road to get to that waypoint in meters, the dx and dy values define the unit normal vector pointing outward of the highway loop.
+
+The highway's waypoints loop around so the frenet s value, distance along the road, goes from 0 to 6945.554.
 
 #### Main car's localization Data (No Noise)
 
