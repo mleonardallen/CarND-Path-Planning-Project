@@ -9,7 +9,7 @@ In this project your goal is to safely navigate around a virtual highway with ot
 
 ## Implementation
 
-### Current Best Distane
+### Best Distance Without Incident.
 
 On average my planner travels about 10 miles before getting into an incident.  Sometimes it gets into an incident much before that, and sometimes the car can last a while before getting into an incident.  My record is `42.83` miles.
 
