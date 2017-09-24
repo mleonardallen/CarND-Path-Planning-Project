@@ -25,15 +25,25 @@ The highway has 6 lanes, with 3 heading in each direction, and each lane meaurin
 
 ### Behavior Planner
 
-My behavior planner runs on a separate thread so that I may try to look into the future a few timesteps without preventing execution of the main loop.  When the thread completes, a vector of states is given to be 
+As input the behavior planner receives `sensor fusion` data, `map` data, current `state`, as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
+
+# Given current `state`, get all transition `states`.
+# For each `transition` state, determine if the transition `is valid` given the current environment.  For example `Prepare Lane Change Left (<=)` is not a `valid` `state` if the car is already in the left most lane.
+# If `valid`, then generate car `waypoints` using the `Trajectory` module.
+# Calculate the [Costs](#costs) of the `waypoints`
+# The lowest `cost` trajectory is chosen by the behavior planner.
+
+#### Threads
+
+The `behavior planner` module takes some time to generate a plan.  My behavior planner runs on a separate thread so that I may try to look into the future a few timesteps without preventing execution of the main loop.  When the thread completes, a vector of `states` is given to be evaluated by the trajectory module.
 
 ### States
 
-The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`.  Each state three important methods.
+The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`.  In addEach state three important methods.
 
 - `transitions` provides valid transition states from given state.
-- `isValid` determines if the current parameters such as sensor fusion data and car frenet coordinates apply to the given state.  If not valid, then this state will not be considered by the behavior planner.
-- `isComplete` determines if it is okay to transition to the next state.  This is especially important for the prepare lane change states where we do not want to change lanes if it would cause a collision.  
+- `isValid` determines if the current parameters such as `sensor fusion` and car `frenet coordinates` apply to the given state.  If not valid, then this state will not be considered by the behavior planner.
+- `isComplete` determines if it is okay to transition to the next state.  This is especially important for the prepare lane change states where we do not want to change lanes if it would cause a collision.
 
 Example: The `Prepare Lane Change Left (<=)` is not complete until changing lanes avoids collision.  Once complete, the car is allowed to transition into the `Change Lane Left (<=)` state given by the bahavior planner.
 
@@ -53,11 +63,11 @@ Example: `Slow Speed Cost` for `Lane Keep` increases, while `Change Lane Left (<
 
 ### Prediction
 
-The prediction module is very simplistic, and does not do try to predict lane changes or other behavior for the vehicles contained in the sensor fusion module.  It does however calculate an average velocity and acceleration using a short history of sensor fusion data.  Using this information, I am able to predict where each car will be N timesteps into the future, not including any lane changes or sudden changes in velocity.
+The prediction module is very simplistic, and does not do try to predict lane changes or other behavior for the vehicles contained in the sensor fusion module.  It does however calculate an average velocity and acceleration using a short history of `sensor fusion` data.  Using this information, I am able to predict where each car will be N timesteps into the future, not including any lane changes or sudden changes in velocity.
 
 ### Trajectory
 
-The trajectory module is responsible for generating waypoints that are sent to the car's controller.  
+The trajectory module is responsible for generating waypoints that are sent to the car's controller.
 
 
 #### The map of the highway is in data/highway_map.txt
