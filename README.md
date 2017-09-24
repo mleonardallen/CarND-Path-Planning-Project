@@ -25,13 +25,15 @@ The highway has 6 lanes, with 3 heading in each direction, and each lane meaurin
 
 ### Behavior Planner
 
-As input the behavior planner receives `sensor fusion` data, `map` data, current [`state`](#States), as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
+As input the behavior planner receives `sensor fusion` data, `map` data, current [State](#States), as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
 
 1. Given current `state`, get all transition `states`.
 2. For each `transition` state, determine if the transition `is valid` given the current environment.  For example `Prepare Lane Change Left (<=)` is not a `valid` `state` if the car is already in the left most lane.
 3. If `valid`, then generate car `waypoints` using the `Trajectory` module.
 4. Calculate the [Costs](#costs) of the `waypoints`
 5. The lowest `cost` trajectory is chosen by the behavior planner.
+6. The `state` representing the lowest cost trajectory is returned to the main loop for evaluation by the `Trajectory` module.  At this point the `state` does not contain exact waypoints, but rather is a general instruction such as `Change Lane Left (<=)` and a `target lane`.
+
 
 #### Dynamic Programming & Planning Depth
 
@@ -49,7 +51,7 @@ The `behavior planner` module takes some time to generate a plan.  My behavior p
 
 ### States
 
-The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`.  In addEach state three important methods.
+The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`. Each state three important methods.
 
 - `transitions` provides valid transition states from given state.
 - `isValid` determines if the current parameters such as `sensor fusion` and car `frenet coordinates` apply to the given state.  If not valid, then this state will not be considered by the behavior planner.
@@ -77,7 +79,22 @@ The prediction module is very simplistic, and does not do try to predict lane ch
 
 ### Trajectory
 
-The trajectory module is responsible for generating waypoints that are sent to the car's controller.
+The trajectory module is responsible for generating waypoints that are sent to the car's controller.  In order to generate waypoints, the Trajectory module receives the `sensor fusion` data, current car data, as well as the state for which we want to generate waypoints.
+
+#### Safe Velocity
+
+The `safe velocity` is the speed that it is okay for the car to travel.  In the absense of other factors, the speed limit is used as the `safe velocity`.  However if the car is approaching other cars, then the `safe velocity` will adjust to the speed of the approached car in the given target lane.  For example if the target lane is the current lane, then the closest vehicle in front of the current car is used to determine the `safe velocity`.  However if we are changing lanes, then the velocity is determined by the closet car in the given `target lane`.
+
+After determining the `safe velocity`, we use this information when generating waypoints.  For example if the car is traveling faster than the `safe velocity`, then the car will decellerate.  If travelling slower than the `safe velocity` then the car will accelerate.
+
+
+#### Acceleration &amp; Jerk Minimization
+
+In order to create jerk minimized trajectories and not exceed acceleration limits, I leverage the spline library.
+
+ - Include points from previous path when generating a new spline so that the previous car possitiona and orientation are taken into account when generating new waypoints.
+ - Include points at a further distance into the future so that car is not making sharp turns.
+ - Taking the simulation cycle into account (20 ms between each waypoint), I use kinematics equations for distance including velocity and acceleration.  By incorporating these into the equation, I can ensure the car does not exceed acceleration between any given waypoints.
 
 
 #### The map of the highway is in data/highway_map.txt
