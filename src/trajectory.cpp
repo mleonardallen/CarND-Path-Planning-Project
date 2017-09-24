@@ -40,8 +40,8 @@ vector<vector<double>> Trajectory::getTrajectory(
   next_y_vals.insert(next_y_vals.end(), previous_path_y.begin(), previous_path_y.end());
 
   // generate new trajectory points
-  std::vector<double> ptsx;
-  std::vector<double> ptsy;
+  vector<double> ptsx;
+  vector<double> ptsy;
 
   double ref_x = car_x;
   double ref_y = car_y;
@@ -92,9 +92,29 @@ vector<vector<double>> Trajectory::getTrajectory(
     ptsy[i] = xy[1];
   }
 
+  // Sort the points to avoid spline assertion error
+  // Assertion failed: (m_x[i]<m_x[i+1]), function set_points, file src/spline.h, line 294.
+  // TODO: How is this error happening?  Perhaps there is an error in the getLocalSpace function?
+  vector<size_t> index_vec;
+  for (size_t i = 0; i != ptsx.size(); ++i) { index_vec.push_back(i); }
+  sort(
+    index_vec.begin(),
+    index_vec.end(),
+    [&](std::size_t a, std::size_t b) {
+      return ptsx[a] < ptsx[b];
+    }
+  );
+  vector<double> sorted_ptsx;
+  vector<double> sorted_ptsy;
+  for (std::size_t i = 0; i != index_vec.size(); ++i)
+  {
+    sorted_ptsx[i] = ptsx[index_vec[i]];
+    sorted_ptsy[i] = ptsy[index_vec[i]];
+  }
+
   // create the spline
   tk::spline spline;
-  spline.set_points(ptsx, ptsy);
+  spline.set_points(sorted_ptsx, sorted_ptsy);
 
   // get the previous path velocity
   double x_point = 0;
