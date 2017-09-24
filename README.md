@@ -27,11 +27,21 @@ The highway has 6 lanes, with 3 heading in each direction, and each lane meaurin
 
 As input the behavior planner receives `sensor fusion` data, `map` data, current `state`, as well as current location and velocity data for the car.  Using these inputs, the behavior planner creats a variety of possible trajectories that the car could take.  The process works as follows:
 
-# Given current `state`, get all transition `states`.
-# For each `transition` state, determine if the transition `is valid` given the current environment.  For example `Prepare Lane Change Left (<=)` is not a `valid` `state` if the car is already in the left most lane.
-# If `valid`, then generate car `waypoints` using the `Trajectory` module.
-# Calculate the [Costs](#costs) of the `waypoints`
-# The lowest `cost` trajectory is chosen by the behavior planner.
+1. Given current `state`, get all transition `states`.
+2. For each `transition` state, determine if the transition `is valid` given the current environment.  For example `Prepare Lane Change Left (<=)` is not a `valid` `state` if the car is already in the left most lane.
+3. If `valid`, then generate car `waypoints` using the `Trajectory` module.
+4. Calculate the [Costs](#costs) of the `waypoints`
+5. The lowest `cost` trajectory is chosen by the behavior planner.
+
+#### Dynamic Programming & Planning Depth
+
+In order to have a good plan, we need to look a few timesteps into the future.  In order to do this, I leverage dynamic programming, where the lowest cost information is propogated back to the initial state.
+
+Increasing the depth that we look into the future has pros and cons.
+- Increased depth exponentially increases computational time.  For example, the first set of transitions include three possible states.  Each of those transitions may have 3 possible transitions, giving us a O(3^n), where n is the depth at which we look into the future.
+- Increased computation time will leave the car sitting in a non-optimal path until the behavior planner completes.  For example, it could be obvious that the car needs to change lanes, but it will not do so before the behavior planner completes.
+- The accuracy of [Predictions](#Prediction) become more unreliable the further we look into the future.
+- If we do not look far enough into the future, we may choose states that are not optimal.  For example change into the right lane, when it only gives a very short term advantage.
 
 #### Threads
 
