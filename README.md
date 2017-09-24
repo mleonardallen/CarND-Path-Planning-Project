@@ -9,6 +9,12 @@ In this project your goal is to safely navigate around a virtual highway with ot
 
 ## Implementation
 
+### Current Best Distane
+
+On average my planner travels about 10 miles before getting into an incident.  Sometimes it gets into an incident much before that, and sometimes the car can last a while before getting into an incident.  My record is `42.83` miles.
+
+![Record](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/record.jpg)
+
 ### Debugging
 
 Car color is not contained in the `sensor fusion` module which makes it difficult to match terminal output to the cars on the screen.  The following matches car colors to car id given by the `sensor fusion` module.
