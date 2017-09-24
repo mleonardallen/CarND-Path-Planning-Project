@@ -11,6 +11,10 @@ In this project your goal is to safely navigate around a virtual highway with ot
 
 ### Debugging
 
+Car color is not contained in the `sensor fusion` module which makes it difficult to match terminal output to the cars on the screen.  The following matches car colors to car id given by the `sensor fusion` module.
+
+Note: Colors repeat on higher numbers.
+
 ![Car Numbers](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/numbers.png)
 
 ### Behavior Planner
