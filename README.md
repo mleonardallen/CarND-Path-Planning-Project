@@ -96,6 +96,13 @@ In order to create jerk minimized trajectories and not exceed acceleration limit
  - Include points at a further distance into the future so that car is not making sharp turns.
  - Taking the simulation cycle into account (20 ms between each waypoint), I use kinematics equations for distance including velocity and acceleration.  By incorporating these into the equation, I can ensure the car does not exceed acceleration between any given waypoints.
 
+## Improvement Opportunities
+
+- The code for preventing the car from exceeding acceleration thresholds only considers acceleration in the `s` direection.  In order to prevent edge cases, it should not be allowed to accelerate 
+- Sometimes the car exceeds jerk limitations when changing lanes on the curved sections of the road as well as changing lanes quickly in the opposite direction after a previous lane change.  Cost functions could be added to penalize high jerk lane changes.
+- The Prediction module could be updated to predict things such as `change lane`, `sudden break` or `sudden accelerations`.  This will help the car avoid edge situations.
+- The behavior planner code could be computationally optimized so that a greater depth can be computed in a reasonable time.
+- I currently do not consider any `target vehicles`, so complicated maneuvers are not possible.  For example, in preparing to change lanes, my car will not slow down to get behind another car in order to change lanes, and will at times get boxed when there is a clear opening behind the car.
 
 ## Basic Build Instructions
 
