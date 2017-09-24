@@ -17,6 +17,12 @@ Note: Colors repeat on higher numbers.
 
 ![Car Numbers](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/numbers.png)
 
+In frenet coordinates, the d coordinate represents side-to-side position on the road.  When reading terminal output, it's good to have an intuition on the range of these values.
+ 
+The highway has 6 lanes, with 3 heading in each direction, and each lane meauring 4 meters wide.  The image below indicates the range values for each lane.
+
+![D Frenet Values](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/lanes.png)
+
 ### Behavior Planner
 
 ### Prediction
