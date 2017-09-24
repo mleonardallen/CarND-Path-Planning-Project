@@ -25,9 +25,36 @@ The highway has 6 lanes, with 3 heading in each direction, and each lane meaurin
 
 ### Behavior Planner
 
+My behavior planner runs on a separate thread so that I may try to look into the future a few timesteps without preventing execution of the main loop.  When the thread completes, a vector of states is given to be 
+
+### States
+
+The planner's state machine contains five states: `Lane Keep`, `Prepare Lane Change Left (<=)`, `Prepare Lane Change Right (=>)`, `Lane Change Left (<=)`, and `Lane Change Right (=>)`.  Each state three important methods.
+
+- `isValid` determines if the current parameters such as sensor fusion data and car frenet coordinates apply to the given state.  If not valid, then this state will not be considered by the behavior planner.
+- `isComplete` determines if it is okay to transition to the next state.  This is especially important for the prepare lane change states where we do not want to change lanes if it would cause a collision.  In the example below, the `Prepare Lane Change Left (<=)` is not complete until changing lanes avoids collision.  Once complete, the car is allowed to transition into the `Change Lane Left (<=)` state given by the bahavior planner.
+
+![Safe Lane Change](https://github.com/mleonardallen/CarND-Path-Planning-Project/blob/master/images/safe-lane-change.gif)
+
+- `transitions` provides valid transition states from given state.
+
+### Costs
+
+In creating costs, I decided to go with `Collide Cost`, `Slow Speed Cost`, and a `Change Lane Cost`
+
+- `Collide Cost` leverages the prediction module to determine of the given waypoints will collide with any vehicles contained in the `sensor fusion` data.  This cost is weighted at a very high value to ensure it outweighs things like slow speed cost.
+- `Slow Speed Cost` penalizes the car for traveling below the speed limit.
+- `Change Lane Cost` penalizes the car for changing lanes.  This is important to prevent the car from changing lanes frequently when it would be fine to stay in the `Lane Keep` state.  Also because lane changes are inheritly more dangerous than staying in the current lane, it is a good idea to discourage lane changes unless they are needed.
+
+Example: `Slow Speed Cost` for `Lane Keep` increases, while `Change Lane Left (<=)` allows the car to travel faster and have a reduced `Slow Speed Cost`.  Since the cost for changing lanes is lower than staying in the current lane, the planner determines that chaning lanes is the best option.
+
 ### Prediction
 
+The prediction module is very simplistic, and does not do try to predict lane changes or other behavior for the vehicles contained in the sensor fusion module.  It does however calculate an average velocity and acceleration using a short history of sensor fusion data.  Using this information, I am able to predict where each car will be N timesteps into the future, not including any lane changes or sudden changes in velocity.
+
 ### Trajectory
+
+The trajectory module is responsible for generating waypoints that are sent to the car's controller.  
 
 
 #### The map of the highway is in data/highway_map.txt
