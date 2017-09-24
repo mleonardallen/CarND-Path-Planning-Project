@@ -30,7 +30,7 @@ double Cost::getBufferViolations(
   vector<double> violations;
   map<int, shared_ptr<Prediction>> predictions = predictor.getPredictions(sensor_fusion_history);
 
-  double car_length_s = 5.0;
+  double car_length_s = 5.5;
   double car_width_d = 3;
   int N = waypoints[0].size();
 

@@ -95,24 +95,25 @@ vector<vector<double>> Trajectory::getTrajectory(
   // Sort the points to avoid spline assertion error
   // Assertion failed: (m_x[i]<m_x[i+1]), function set_points, file src/spline.h, line 294.
   // TODO: How is this error happening?  Perhaps there is an error in the getLocalSpace function?
-  vector<size_t> index_vec;
-  for (size_t i = 0; i != ptsx.size(); ++i) { index_vec.push_back(i); }
+  vector<int> index_vec;
+  for (int i = 0; i != ptsx.size(); i++) { index_vec.push_back(i); }
   sort(
     index_vec.begin(),
     index_vec.end(),
-    [&](std::size_t a, std::size_t b) {
+    [&](int a, int b) {
       return ptsx[a] < ptsx[b];
     }
   );
+
   vector<double> sorted_ptsx;
   vector<double> sorted_ptsy;
-  for (std::size_t i = 0; i != index_vec.size(); ++i)
+  for (int i = 0; i < index_vec.size(); i++)
   {
-    sorted_ptsx[i] = ptsx[index_vec[i]];
-    sorted_ptsy[i] = ptsy[index_vec[i]];
+    sorted_ptsx.push_back(ptsx[index_vec[i]]);
+    sorted_ptsy.push_back(ptsy[index_vec[i]]);
   }
 
-  // create the spline
+  // // create the spline
   tk::spline spline;
   spline.set_points(sorted_ptsx, sorted_ptsy);
 
